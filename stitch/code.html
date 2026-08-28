@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Paymi - The Future of Digital Payments</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-container": "#655f7c",
+                      "error-container": "#ffdad6",
+                      "on-background": "#131b2e",
+                      "error": "#ba1a1a",
+                      "secondary-fixed-dim": "#cac2e4",
+                      "border-subtle": "#E2E8F0",
+                      "surface": "#faf8ff",
+                      "on-surface": "#131b2e",
+                      "surface-container-high": "#e2e7ff",
+                      "surface-dim": "#d2d9f4",
+                      "outline-variant": "#cac4d6",
+                      "surface-variant": "#dae2fd",
+                      "background": "#faf8ff",
+                      "on-tertiary-container": "#cec5ff",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#49435f",
+                      "secondary": "#615a78",
+                      "inverse-on-surface": "#eef0ff",
+                      "on-primary-fixed-variant": "#4b28b3",
+                      "tertiary-fixed-dim": "#c8bfff",
+                      "surface-tint": "#6345cc",
+                      "primary": "#431cac",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#5b3cc4",
+                      "on-primary-container": "#d1c5ff",
+                      "surface-container": "#eaedff",
+                      "on-surface-variant": "#484554",
+                      "on-tertiary-fixed": "#1a0063",
+                      "tertiary-fixed": "#e5deff",
+                      "secondary-container": "#e4dbfe",
+                      "tertiary": "#3e25a4",
+                      "on-primary-fixed": "#1e0061",
+                      "surface-container-low": "#f2f3ff",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#5641bc",
+                      "text-muted": "#64748B",
+                      "outline": "#797585",
+                      "on-tertiary-fixed-variant": "#452fab",
+                      "on-primary": "#ffffff",
+                      "background-alt": "#F9FAFB",
+                      "surface-bright": "#faf8ff",
+                      "on-secondary-fixed": "#1d1831",
+                      "surface-container-highest": "#dae2fd",
+                      "primary-fixed": "#e7deff",
+                      "secondary-fixed": "#e7deff",
+                      "inverse-surface": "#283044",
+                      "inverse-primary": "#cbbeff",
+                      "glass-fill": "rgba(255, 255, 255, 0.8)",
+                      "primary-fixed-dim": "#cbbeff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-padding": "96px",
+                      "margin-desktop": "32px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "container-max": "1200px",
+                      "stack-lg": "24px",
+                      "stack-xs": "4px",
+                      "gutter": "24px",
+                      "stack-xl": "48px",
+                      "margin-mobile": "16px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "64px",
+                              {
+                                      "lineHeight": "72px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen">
+<!-- 1. Header: TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-glass-fill/80 backdrop-blur-md shadow-sm">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-desktop py-4">
+<div class="text-headline-md font-headline-md font-bold text-primary">Paymi</div>
+<nav class="hidden md:flex gap-stack-lg items-center">
+<a class="text-primary font-label-md font-bold border-b-2 border-primary pb-1 hover:text-primary transition-colors duration-300" href="#">Home</a>
+<a class="text-on-surface-variant font-label-md hover:text-primary transition-colors duration-300" href="#">About Us</a>
+<a class="text-on-surface-variant font-label-md hover:text-primary transition-colors duration-300" href="#">Features</a>
+<a class="text-on-surface-variant font-label-md hover:text-primary transition-colors duration-300" href="#">Blog</a>
+<a class="text-on-surface-variant font-label-md hover:text-primary transition-colors duration-300" href="#">Contact</a>
+</nav>
+<div class="hidden md:flex gap-stack-md items-center">
+<button class="text-primary font-label-md bg-secondary-container hover:bg-tertiary-fixed transition-colors px-6 py-2 rounded-full">Sign In</button>
+<button class="bg-primary text-on-primary font-label-md hover:bg-tertiary transition-colors px-6 py-2 rounded-full">Sign Up</button>
+</div>
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<!-- 2. Hero Section -->
+<section class="pt-[140px] pb-section-padding max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop relative overflow-hidden">
+<div class="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-secondary-container rounded-full blur-[120px] opacity-60"></div>
+<div class="absolute bottom-0 left-0 -z-10 w-[500px] h-[500px] bg-surface-container-highest rounded-full blur-[100px] opacity-50"></div>
+<div class="text-center max-w-3xl mx-auto mb-stack-xl">
+<h1 class="text-headline-lg-mobile md:text-headline-xl font-headline-xl text-on-background mb-stack-md">The Future of Digital Payments!</h1>
+<p class="text-body-lg font-body-lg text-on-surface-variant mb-stack-lg">Experience seamless, secure, and lightning-fast financial transactions across the globe with our unified platform.</p>
+<div class="flex flex-col sm:flex-row gap-stack-md justify-center">
+<button class="bg-primary text-on-primary font-label-md px-8 py-3 rounded-full hover:bg-tertiary shadow-[0_4px_14px_rgba(91,60,196,0.2)] transition-all">Get Started Now</button>
+<button class="bg-surface border border-border-subtle text-primary font-label-md px-8 py-3 rounded-full hover:bg-secondary-container transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">play_circle</span> Watch Demo
+                </button>
+</div>
+</div>
+<div class="relative w-full h-[600px] flex justify-center items-center mt-stack-xl perspective-1000">
+<!-- Center Phone Mockup -->
+<div class="relative z-20 w-[280px] h-[580px] bg-surface border-8 border-on-background rounded-[40px] shadow-[0_20px_50px_rgba(91,60,196,0.15)] overflow-hidden flex flex-col">
+<div class="w-full h-full bg-background-alt pt-8 px-4 flex flex-col gap-4">
+<div class="flex justify-between items-center mb-2">
+<div class="w-10 h-10 bg-secondary-container rounded-full"></div>
+<span class="material-symbols-outlined text-primary">notifications</span>
+</div>
+<div class="bg-primary-container text-on-primary p-4 rounded-xl shadow-md">
+<div class="text-label-sm opacity-80">Total Balance</div>
+<div class="text-headline-sm font-bold mt-1">$24,560.00</div>
+</div>
+<div class="grid grid-cols-4 gap-2">
+<div class="aspect-square bg-surface border border-border-subtle rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-primary">send</span></div>
+<div class="aspect-square bg-surface border border-border-subtle rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-primary">call_received</span></div>
+<div class="aspect-square bg-surface border border-border-subtle rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-primary">account_balance_wallet</span></div>
+<div class="aspect-square bg-surface border border-border-subtle rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-primary">more_horiz</span></div>
+</div>
+<div class="mt-4 flex-1 bg-surface rounded-t-xl border-t border-x border-border-subtle p-4">
+<div class="font-bold mb-2">Recent</div>
+<div class="flex gap-2 items-center py-2 border-b border-border-subtle">
+<div class="w-8 h-8 bg-surface-container-highest rounded-full"></div>
+<div class="flex-1"><div class="text-sm font-bold">Netflix</div><div class="text-xs text-text-muted">Subscription</div></div>
+<div class="text-sm font-bold text-on-surface">-$15.99</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Left Floating Glass Card -->
+<div class="absolute left-[10%] top-[20%] z-30 w-64 p-4 bg-glass-fill/80 backdrop-blur-md rounded-xl border border-white/20 shadow-[0_10px_30px_rgba(91,60,196,0.1)] hidden lg:block -rotate-6 transform transition-transform hover:rotate-0 duration-300">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-md font-bold">Splits Pay</span>
+<span class="material-symbols-outlined text-primary">receipt_long</span>
+</div>
+<div class="flex -space-x-2 mb-3">
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="A portrait photo of a young professional smiling in a brightly lit modern office setting, light mode aesthetic, clean background, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQewXT2cbHoq12VYk9rvQtKKIQfEilBTi197uGkb8al3mJeIucSNhuP17uuRRcFbrybGQjfJQ9S6OT3WZxGmIbfJlwbqPetwZwB1vWcrCJL3V_U18TlVvFJLlyWQekU-c9JbieyDDXDgRoHhu3DQRurImi3hOkdm5FSUPxRr7jnMQs0rMBx6avCmBrveINMZmSGYAtW10y8kdXzXkqkRnjYaikGtJmd-R6wO9uch-4rvyxxlyqtNSC"/>
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="A portrait photo of an executive looking confident in a glass-walled conference room, cool color palette, highly detailed, professional lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_rJFOfbStW7Je3cxepUR13eBplLMfGHx0unWhXDUunGahAmIePThsLZzsO-4YsYRAaaTQBRB5jiOuHTFI9c6MxDbval3CBgFHlj2O9j_secFyRRST4AvARREx4J_Zz_PzuDYW2SqZobbV5ZpA4mlLbKsDIlu-sgNJAuNmjsJGChUxe0w-6J2ioQJNGvrzo3wspOr7PTHPyyLvnSvdus1ykeB71oqFmamqXoBz21MKTvqp8MKultjR"/>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-secondary-container flex items-center justify-center text-xs font-bold text-primary">+2</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-2 rounded-full text-label-sm">Send Money</button>
+</div>
+<!-- Right Floating Stat Badge -->
+<div class="absolute right-[10%] bottom-[20%] z-30 p-4 bg-glass-fill/80 backdrop-blur-md rounded-xl border border-white/20 shadow-[0_10px_30px_rgba(91,60,196,0.1)] hidden lg:flex items-center gap-4 rotate-3 transform transition-transform hover:rotate-0 duration-300">
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div>
+<div class="text-headline-sm font-bold text-on-surface">8.5/10</div>
+<div class="text-label-sm text-text-muted">User Satisfaction Rating</div>
+</div>
+</div>
+<!-- Right phone mockup secondary -->
+<div class="absolute right-[20%] top-[10%] z-10 w-[240px] h-[500px] bg-surface-container border-4 border-outline-variant rounded-[32px] shadow-lg hidden md:block opacity-60 rotate-12 blur-[1px]"></div>
+<!-- Left phone mockup secondary -->
+<div class="absolute left-[20%] bottom-[10%] z-10 w-[240px] h-[500px] bg-surface-container border-4 border-outline-variant rounded-[32px] shadow-lg hidden md:block opacity-60 -rotate-12 blur-[1px]"></div>
+</div>
+</section>
+<!-- 3. Brand Wall -->
+<section class="py-stack-xl bg-surface-container-low border-y border-border-subtle">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop text-center">
+<p class="text-label-sm font-label-sm text-text-muted mb-stack-md uppercase tracking-wider">Partners &amp; Integrations</p>
+<div class="flex flex-wrap justify-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-4xl">payments</span><span class="text-xl font-bold">Stripe</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-4xl">account_balance</span><span class="text-xl font-bold">Plaid</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-4xl">storefront</span><span class="text-xl font-bold">Shopify</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-4xl">cloud_sync</span><span class="text-xl font-bold">Xero</span></div>
+<div class="flex items-center gap-2"><span class="material-symbols-outlined text-4xl">security</span><span class="text-xl font-bold">Auth0</span></div>
+</div>
+</div>
+</section>
+<!-- 4. Value Prop -->
+<section class="py-section-padding max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter items-center">
+<div>
+<h2 class="text-headline-md font-headline-md font-bold mb-stack-md">Move money seamlessly across borders</h2>
+<p class="text-body-md text-on-surface-variant mb-stack-lg">Our infrastructure is designed for high-velocity global teams. Skip the hidden fees and transfer delays.</p>
+<ul class="space-y-stack-md mb-stack-lg">
+<li class="flex items-start gap-3">
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-primary text-[14px]">check</span>
+</div>
+<div>
+<div class="font-label-md font-bold">Secure &amp; Reliable</div>
+<div class="text-body-sm text-text-muted">Bank-grade encryption for every transaction.</div>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-primary text-[14px]">check</span>
+</div>
+<div>
+<div class="font-label-md font-bold">Global Support</div>
+<div class="text-body-sm text-text-muted">Operate in 150+ currencies with real-time conversion.</div>
+</div>
+</li>
+</ul>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md hover:bg-tertiary transition-colors">Learn More</button>
+</div>
+<div class="relative h-[500px] flex items-center justify-center">
+<div class="w-[300px] h-[550px] bg-surface border-8 border-on-background rounded-[40px] shadow-2xl overflow-hidden rotate-6 transform transition-transform hover:rotate-3 duration-500">
+<div class="w-full h-full bg-surface-container p-6 relative">
+<div class="absolute inset-0 bg-gradient-to-b from-transparent to-surface pointer-events-none"></div>
+<div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
+<div class="text-xs text-text-muted">Transfer to</div>
+<div class="font-bold flex items-center gap-2 mt-1"><div class="w-6 h-6 bg-secondary-container rounded-full"></div>Emma Watson</div>
+<div class="text-2xl font-bold mt-2">$1,250.00</div>
+</div>
+<div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
+<div class="flex justify-between items-center mb-2">
+<div class="text-xs text-text-muted">Status</div>
+<div class="text-xs text-primary bg-secondary-container px-2 py-1 rounded-full">Processing</div>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-2">
+<div class="bg-primary w-2/3 h-full rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 5. Metrics Bento Grid -->
+<section class="py-section-padding bg-background-alt">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<h2 class="text-headline-md font-headline-md font-bold text-center mb-stack-xl">Why Millions Trust Us</h2>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Large Card 1 -->
+<div class="col-span-1 md:col-span-8 bg-surface rounded-3xl p-8 border border-border-subtle shadow-sm flex flex-col justify-between overflow-hidden relative">
+<div class="z-10 relative">
+<div class="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">store</span>
+</div>
+<h3 class="text-headline-lg font-bold text-primary mb-2">275+</h3>
+<p class="text-headline-sm font-bold mb-1">Merchants Worldwide</p>
+<p class="text-body-md text-on-surface-variant max-w-md">Accept payments from customers everywhere with our seamless merchant integration network.</p>
+</div>
+<div class="absolute right-[-10%] bottom-[-20%] w-[300px] h-[300px] bg-surface-container-high rounded-full opacity-50"></div>
+</div>
+<!-- Small Card 1 -->
+<div class="col-span-1 md:col-span-4 bg-primary text-on-primary rounded-3xl p-8 shadow-[0_10px_30px_rgba(91,60,196,0.3)] flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-5xl mb-4 opacity-80" style="font-variation-settings: 'FILL' 1;">groups</span>
+<h3 class="text-headline-lg font-bold mb-2">45K+</h3>
+<p class="text-label-md font-bold opacity-90">Active Daily Users</p>
+</div>
+<!-- Small Card 2 -->
+<div class="col-span-1 md:col-span-4 bg-surface rounded-3xl p-8 border border-border-subtle shadow-sm flex flex-col justify-center items-center text-center">
+<div class="w-20 h-20 bg-secondary-container rounded-full flex items-center justify-center mb-4">
+<span class="text-headline-md font-bold text-primary">99%</span>
+</div>
+<p class="text-label-md font-bold text-on-surface">Transaction Success Rate</p>
+</div>
+<!-- Photo Card -->
+<div class="col-span-1 md:col-span-8 rounded-3xl overflow-hidden relative min-h-[300px] group">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="A modern cafe scene with a person paying with their smartphone at the counter. Warm lighting, shallow depth of field, high-tech fintech lifestyle aesthetic, clear focus on the phone screen." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA5xvS00Owgz6WVblNwTpceYWGCrSWuA-fD2hp966UtRzekxiUsrJbfeVSSYzWUb0wad8D6ym5DznGzF8PqNhrFHVbQBDblTENySd57Dxco0mh007nNQaXUDFN4nNUAp0G4Qe8aq03B5i4wdKSW2rLYN4yoq_H0nWNn6f4ugV8gCytSzssCgVu6pLa7CW-sKqKm9VAiCM9cOIe0pLoxMEGQcrQki26X2HToA4xMVPIcDYBpeTz9vLWp')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-8 text-white z-10">
+<p class="font-bold text-lg mb-2">Real-world Application</p>
+<p class="text-sm opacity-90">Pay seamlessly at your favorite local spots.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 6. Features (Dark Accent) -->
+<section class="py-section-padding max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="bg-primary-container rounded-3xl p-8 md:p-16 text-on-primary shadow-2xl relative overflow-hidden">
+<!-- decorative circles -->
+<div class="absolute top-[-50px] right-[-50px] w-64 h-64 bg-white/5 rounded-full blur-2xl"></div>
+<div class="absolute bottom-[-100px] left-[-50px] w-96 h-96 bg-black/10 rounded-full blur-3xl"></div>
+<div class="relative z-10 text-center max-w-2xl mx-auto mb-stack-xl">
+<h2 class="text-headline-md font-headline-md font-bold mb-4 text-white">Powerful Features for Modern Finance</h2>
+<p class="text-body-md text-on-primary-container">Everything you need to manage your business finances in one unified dashboard.</p>
+</div>
+<div class="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Feature Card 1 -->
+<div class="bg-surface text-on-surface rounded-2xl p-6 shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl duration-300">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">bar_chart</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Analytics</h4>
+<p class="text-body-sm text-text-muted">Real-time insights into your spending patterns.</p>
+</div>
+<!-- Feature Card 2 -->
+<div class="bg-surface text-on-surface rounded-2xl p-6 shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl duration-300">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">credit_card</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Payment Gateway</h4>
+<p class="text-body-sm text-text-muted">Accept all major cards and local payment methods.</p>
+</div>
+<!-- Feature Card 3 -->
+<div class="bg-surface text-on-surface rounded-2xl p-6 shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl duration-300">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">description</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Reports</h4>
+<p class="text-body-sm text-text-muted">Automated tax-ready reports exported in one click.</p>
+</div>
+<!-- Feature Card 4 -->
+<div class="bg-surface text-on-surface rounded-2xl p-6 shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl duration-300">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">savings</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Cashback</h4>
+<p class="text-body-sm text-text-muted">Earn up to 2% back on all business purchases.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- 7. Testimonials & FAQ -->
+<section class="py-section-padding bg-background">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-stack-xl">
+<!-- Testimonials -->
+<div>
+<h3 class="text-headline-sm font-bold mb-stack-lg">Loved by founders</h3>
+<div class="space-y-6">
+<div class="bg-surface p-6 rounded-2xl border border-border-subtle shadow-sm relative">
+<span class="material-symbols-outlined absolute top-6 right-6 text-surface-container-highest text-4xl" style="font-variation-settings: 'FILL' 1;">format_quote</span>
+<p class="text-body-md text-on-surface-variant italic mb-4 relative z-10">"Paymi has completely transformed how we handle international payroll. It's fast, transparent, and beautiful to use."</p>
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="Portrait of a female startup founder with a bright confident smile, soft studio lighting, professional attire, clean modern background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzt0uX3NmPZblF2vq_hIrz2nNAPCMotp1UEalVLQXRK9xM42P0A1JmkYVFCHNxC5xj_jfzV5ci5mo0zEPCrRKR75Kd0QSN8Rgesd46Cj5QimWl_cUIt_oO6-xQXx3sZjT90rS5bZ8ytKrNZSOvuF0Vq_bu1LRmFCB2hPSc6lHQO07r8YDmystF_cPEs7MD6s9wxha8Lgl4gc6ORaGMcRF4VUcfeA6mMUJfXP3ItWWWxffenD98jaWR"/>
+<div>
+<div class="font-bold text-sm">Sarah Jenkins</div>
+<div class="text-xs text-text-muted">CEO, TechFlow</div>
+</div>
+</div>
+</div>
+<div class="bg-surface p-6 rounded-2xl border border-border-subtle shadow-sm relative">
+<span class="material-symbols-outlined absolute top-6 right-6 text-surface-container-highest text-4xl" style="font-variation-settings: 'FILL' 1;">format_quote</span>
+<p class="text-body-md text-on-surface-variant italic mb-4 relative z-10">"The bento-style dashboard gives me all the analytics I need at a glance. Best fintech UI I've ever experienced."</p>
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="Portrait of a male tech lead looking thoughtful, modern office environment, shallow depth of field, warm light mode tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrKJckE36ROmDgT623sv0gEATgQLkQ7bPPbnrh3eCoJj5jfAaHrd6M3OLC107njiTmC6qzcEfs7H0NMvYOCJxug7A-7pghNe2k6BNy_aNd1bYdbMWrJWXGR7tnAAE7R2l_EsxFve-aZBBKPl8DWr4QtrXe4laXLD2V1PXrZ8LWxf9oH2XgeWDZrL6-brJdKl8t5x_Up8CASHvEKq0l36AVS3pZbJ52WsyH_U43t7U-Grb6q5jFoRe9"/>
+<div>
+<div class="font-bold text-sm">Marcus Chen</div>
+<div class="text-xs text-text-muted">Head of Product, Nexus</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- FAQ -->
+<div>
+<h3 class="text-headline-sm font-bold mb-stack-lg">Common Questions</h3>
+<div class="space-y-4">
+<!-- FAQ Item -->
+<div class="border border-border-subtle rounded-2xl p-4 bg-surface">
+<details class="group">
+<summary class="flex justify-between items-center font-bold cursor-pointer list-none">
+<span>Is Paymi secure?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined">expand_more</span>
+</span>
+</summary>
+<div class="text-body-sm text-text-muted mt-3 pt-3 border-t border-border-subtle">
+                                     Yes, we use AES-256 bank-level encryption and are SOC2 compliant to ensure your data and funds are always protected.
+                                 </div>
+</details>
+</div>
+<!-- FAQ Item -->
+<div class="border border-border-subtle rounded-2xl p-4 bg-surface">
+<details class="group">
+<summary class="flex justify-between items-center font-bold cursor-pointer list-none">
+<span>What are the transaction fees?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined">expand_more</span>
+</span>
+</summary>
+<div class="text-body-sm text-text-muted mt-3 pt-3 border-t border-border-subtle">
+                                     Domestic transfers are free. International transfers incur a flat 1% fee with real-time market exchange rates.
+                                 </div>
+</details>
+</div>
+<!-- FAQ Item -->
+<div class="border border-border-subtle rounded-2xl p-4 bg-surface">
+<details class="group">
+<summary class="flex justify-between items-center font-bold cursor-pointer list-none">
+<span>How long do transfers take?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined">expand_more</span>
+</span>
+</summary>
+<div class="text-body-sm text-text-muted mt-3 pt-3 border-t border-border-subtle">
+                                     Most domestic transfers are instant. International transfers typically settle within 1-2 business days depending on the corridor.
+                                 </div>
+</details>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 8. Bottom CTA -->
+<section class="py-section-padding">
+<div class="max-w-[1000px] mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="bg-primary text-on-primary rounded-3xl p-12 text-center shadow-xl relative overflow-hidden">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+<div class="relative z-10">
+<h2 class="text-headline-md font-headline-md font-bold mb-4 text-white">Join Millions of Satisfied Users!</h2>
+<p class="text-body-lg text-on-primary-container mb-8 max-w-xl mx-auto">Create your account in minutes and start experiencing the future of digital payments today.</p>
+<button class="bg-white text-primary font-bold px-8 py-4 rounded-full hover:bg-surface-container transition-colors shadow-lg">Create Free Account</button>
+</div>
+</div>
+</div>
+</section>
+<!-- 9. Footer (From JSON) -->
+<footer class="bg-surface dark:bg-on-background w-full border-t border-border-subtle dark:border-outline-variant flat no shadows">
+<div class="max-w-container-max mx-auto px-margin-desktop py-section-padding grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="col-span-1 md:col-span-1">
+<div class="text-headline-sm font-headline-sm font-bold text-primary dark:text-inverse-primary mb-4">Paymi</div>
+<p class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant mb-4">© 2024 Paymi Financial. All rights reserved.</p>
+</div>
+<div class="col-span-1 md:col-span-3 flex flex-wrap gap-x-8 gap-y-4 md:justify-end">
+<a class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Cookie Policy</a>
+<a class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Security</a>
+<a class="text-label-sm font-label-sm text-text-muted dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Legal</a>
+</div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html class="light" lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kelola Ulangan - Guru</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        surface: "#faf8ff", "surface-dim": "#d2d9f4", "surface-bright": "#faf8ff",
+        "surface-container-lowest": "#ffffff", "surface-container-low": "#f2f3ff",
+        "surface-container": "#eaedff", "surface-container-high": "#e2e7ff",
+        "surface-container-highest": "#dae2fd",
+        "on-surface": "#131b2e", "on-surface-variant": "#484554",
+        outline: "#797585", "outline-variant": "#cac4d6",
+        primary: "#431cac", "on-primary": "#ffffff",
+        "primary-container": "#5b3cc4", "on-primary-container": "#d1c5ff",
+        "inverse-primary": "#cbbeff",
+        secondary: "#615a78", "on-secondary": "#ffffff",
+        "secondary-container": "#e4dbfe", "on-secondary-container": "#655f7c",
+        tertiary: "#3e25a4", "tertiary-container": "#5641bc",
+        "on-tertiary-container": "#cec5ff",
+        error: "#ba1a1a", "on-error": "#ffffff",
+        "error-container": "#ffdad6", "on-error-container": "#93000a",
+        "surface-variant": "#dae2fd",
+        "text-muted": "#64748B", "border-subtle": "#E2E8F0",
+        "background-alt": "#F9FAFB",
+        "glass-fill": "rgba(255,255,255,0.8)"
+      },
+      fontFamily: { display: ["Plus Jakarta Sans","sans-serif"], body: ["Inter","sans-serif"] },
+      borderRadius: { DEFAULT: "0.25rem", md: "0.5rem", lg: "0.75rem", xl: "1rem", "2xl": "1.5rem", full: "9999px" },
+      boxShadow: { soft: "0 4px 16px rgba(91,60,196,0.08),0 2px 4px rgba(91,60,196,0.04)", lift: "0 12px 32px rgba(91,60,196,0.14),0 4px 10px rgba(91,60,196,0.06)", glow: "0 0 0 4px rgba(67,28,172,0.10)" }
+    }
+  }
+}
+</script>
+<style>
+:root{color-scheme:light}
+body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
+.font-display{font-family:"Plus Jakarta Sans",sans-serif}
+.tnum{font-variant-numeric:tabular-nums}
+.glass{background:rgba(255,255,255,0.8);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important}}
+.fade-in{animation:fadeIn .25s cubic-bezier(0.16,1,0.3,1)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.img-preview-wrap{position:relative;display:inline-block;margin-top:6px}
+.img-preview-wrap img{max-height:140px;border-radius:10px;border:1px solid var(--border-subtle,#E2E8F0);object-fit:contain}
+.img-preview-remove{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(186,26,26,0.85);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
+.img-preview-remove:hover{background:#ba1a1a}
+.img-upload-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:9999px;border:1px dashed var(--outline-variant,#cac4d6);background:transparent;color:var(--text-muted,#64748B);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.img-upload-btn:hover{border-color:var(--primary,#431cac);color:var(--primary,#431cac);background:rgba(67,28,172,0.04)}
+.img-url-input{width:100%;padding:4px 10px;background:white;border:1px solid var(--outline-variant,#cac4d6);border-radius:9999px;font-size:11px;color:var(--on-surface,#131b2e);transition:all .15s;box-sizing:border-box}
+.img-url-input::placeholder{color:var(--text-muted,#64748B)}
+.img-url-input:focus{outline:none;border-color:var(--primary,#431cac);box-shadow:0 0 0 3px rgba(67,28,172,0.1)}
+.toast{animation:slideIn .3s cubic-bezier(0.16,1,0.3,1),fadeOut .4s 2.2s forwards}
+@keyframes slideIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeOut{to{opacity:0;transform:translateY(-12px)}}
+</style>
+</head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+
+<body class="bg-surface text-on-surface font-body overflow-x-hidden min-h-[100dvh]">
+
+<!-- ============ TOAST CONTAINER ============ -->
+<div id="toast-box" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+<!-- ============ BACKGROUND DECOR ============ -->
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+  <div class="absolute top-[-120px] right-[-120px] w-[420px] h-[420px] bg-secondary-container rounded-full blur-[120px] opacity-70"></div>
+  <div class="absolute bottom-[-160px] left-[-140px] w-[460px] h-[460px] bg-surface-container-highest rounded-full blur-[120px] opacity-60"></div>
+</div>
+
+<!-- ============ SCREEN: LOGIN PIN ============ -->
+<main id="screen-pin" class="min-h-[100dvh] flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lift mb-4">
+        <span class="material-symbols-outlined text-3xl">admin_panel_settings</span>
+      </div>
+      <h1 class="font-display text-2xl md:text-3xl font-bold tracking-tight">Panel Guru</h1>
+      <p class="text-sm text-text-muted mt-2">Masukkan PIN admin untuk mengelola ulangan.</p>
+    </div>
+    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-soft p-6 md:p-8">
+      <div class="space-y-5">
+        <div>
+          <label for="inp-pin" class="block text-sm font-semibold text-on-surface mb-2">PIN Admin</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">lock</span>
+            <input id="inp-pin" type="password" autocomplete="off" placeholder="Masukkan PIN"
+              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          </div>
+          <p id="err-pin" class="hidden text-sm text-error mt-2"></p>
+        </div>
+        <button id="btn-pin-login" class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 px-6 hover:bg-tertiary transition-colors shadow-lift">
+          <span>Masuk</span>
+          <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+    <p class="text-center text-xs text-text-muted mt-6">PIN default: 1234 (bisa diubah dari halaman Config)</p>
+  </div>
+</main>
+
+<!-- ============ SCREEN: APP SHELL ============ -->
+<div id="app-shell" class="hidden min-h-[100dvh]">
+  <!-- Mobile top bar -->
+  <header class="lg:hidden fixed top-0 left-0 right-0 z-40 glass border-b border-border-subtle">
+    <div class="flex items-center gap-3 px-4 py-3">
+      <span class="material-symbols-outlined text-primary text-[22px]">school</span>
+      <span class="font-display font-bold text-sm truncate">Panel Guru</span>
+      <button id="btn-mobile-menu" class="ml-auto text-primary"><span class="material-symbols-outlined">menu</span></button>
+    </div>
+    <div id="mobile-tabs" class="hidden px-4 pb-3 flex gap-2 overflow-x-auto"></div>
+  </header>
+
+  <!-- Sidebar (desktop) -->
+  <aside class="hidden lg:flex fixed left-0 top-0 bottom-0 w-60 flex-col bg-white/80 backdrop-blur-md border-r border-border-subtle z-30">
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-border-subtle">
+      <span class="material-symbols-outlined text-primary text-[26px]">school</span>
+      <span class="font-display font-bold text-base">Panel Guru</span>
+    </div>
+    <nav id="sidebar-nav" class="flex-1 flex flex-col gap-1 px-3 py-4"></nav>
+    <div class="px-3 py-4 border-t border-border-subtle">
+      <a href="index.html" class="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors px-3 py-2">
+        <span class="material-symbols-outlined text-[18px]">open_in_new</span> Halaman Siswa
+      </a>
+      <button id="btn-logout" class="flex items-center gap-2 text-sm text-error hover:opacity-80 transition-opacity px-3 py-2">
+        <span class="material-symbols-outlined text-[18px]">logout</span> Keluar
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="lg:ml-60 min-h-[100dvh]">
+    <div id="main-area" class="max-w-6xl mx-auto px-4 md:px-8 py-6 lg:py-8 mt-[52px] lg:mt-0"></div>
+  </div>
+
+  <!-- Mobile menu drawer -->
+  <div id="mobile-drawer" class="hidden fixed inset-0 z-50">
+    <div id="mobile-overlay" class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+    <div class="fixed left-0 top-0 bottom-0 w-64 bg-white/95 backdrop-blur-md border-r border-border-subtle flex flex-col shadow-lift fade-in">
+      <div class="flex items-center justify-between px-5 py-5 border-b border-border-subtle">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">school</span>
+          <span class="font-display font-bold">Panel Guru</span>
+        </div>
+        <button id="btn-close-drawer" class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <nav id="drawer-nav" class="flex-1 flex flex-col gap-1 px-3 py-4"></nav>
+      <div class="px-3 py-4 border-t border-border-subtle">
+        <a href="index.html" class="flex items-center gap-2 text-sm text-text-muted hover:text-primary px-3 py-2">
+          <span class="material-symbols-outlined text-[18px]">open_in_new</span> Halaman Siswa
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<!-- Modal siswa (tambah/edit) -->
+<div id="modal-siswa" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-md fade-in">
+    <h3 id="modal-siswa-title" class="font-display text-lg font-bold mb-5">Tambah Siswa</h3>
+    <input type="hidden" id="modal-siswa-idx" value="-1"/>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-1">NIS</label>
+        <input id="ms-nis" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all" placeholder="Nomor induk"/>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Nama</label>
+        <input id="ms-nama" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all" placeholder="Nama lengkap"/>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Kelas</label>
+        <input id="ms-kelas" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all" placeholder="Contoh: XII IPA 1"/>
+      </div>
+      <p id="err-siswa" class="hidden text-sm text-error"></p>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button id="ms-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
+      <button id="ms-simpan" class="flex-1 bg-primary text-on-primary font-semibold rounded-full py-2.5 hover:bg-tertiary transition-colors">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal soal (tambah/edit) -->
+<div id="modal-soal" class="hidden fixed inset-0 z-50 flex items-start justify-center px-4 pt-16 pb-4 overflow-y-auto">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-xl fade-in">
+    <h3 id="modal-soal-title" class="font-display text-lg font-bold mb-5">Tambah Soal</h3>
+    <input type="hidden" id="modal-soal-idx" value="-1"/>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-1">Pertanyaan</label>
+        <textarea id="mq-pertanyaan" rows="3" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all resize-none" placeholder="Tulis pertanyaan soal"></textarea>
+        <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-pertanyaan" class="hidden"/>
+        <div id="mq-preview-pertanyaan"></div>
+        <div class="flex items-center gap-2 mt-1.5">
+          <button type="button" class="img-upload-btn" onclick="triggerFileUpload('pertanyaan')">
+            <span class="material-symbols-outlined" style="font-size:14px">upload</span> Upload
+          </button>
+          <input id="mq-url-pertanyaan" type="url" class="img-url-input" placeholder="Atau tempel URL gambar..."/>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pilihan A</label>
+          <input id="mq-a" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-a" class="hidden"/>
+          <div id="mq-preview-a"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <button type="button" class="img-upload-btn" onclick="triggerFileUpload('a')"><span class="material-symbols-outlined" style="font-size:14px">upload</span></button>
+            <input id="mq-url-a" type="url" class="img-url-input" placeholder="URL gambar..."/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pilihan B</label>
+          <input id="mq-b" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-b" class="hidden"/>
+          <div id="mq-preview-b"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <button type="button" class="img-upload-btn" onclick="triggerFileUpload('b')"><span class="material-symbols-outlined" style="font-size:14px">upload</span></button>
+            <input id="mq-url-b" type="url" class="img-url-input" placeholder="URL gambar..."/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pilihan C</label>
+          <input id="mq-c" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-c" class="hidden"/>
+          <div id="mq-preview-c"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <button type="button" class="img-upload-btn" onclick="triggerFileUpload('c')"><span class="material-symbols-outlined" style="font-size:14px">upload</span></button>
+            <input id="mq-url-c" type="url" class="img-url-input" placeholder="URL gambar..."/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pilihan D</label>
+          <input id="mq-d" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-d" class="hidden"/>
+          <div id="mq-preview-d"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <button type="button" class="img-upload-btn" onclick="triggerFileUpload('d')"><span class="material-symbols-outlined" style="font-size:14px">upload</span></button>
+            <input id="mq-url-d" type="url" class="img-url-input" placeholder="URL gambar..."/>
+          </div>
+        </div>
+        <div class="col-span-2 sm:col-span-1">
+          <label class="block text-sm font-semibold mb-1">Pilihan E</label>
+          <input id="mq-e" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="mq-file-e" class="hidden"/>
+          <div id="mq-preview-e"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <button type="button" class="img-upload-btn" onclick="triggerFileUpload('e')"><span class="material-symbols-outlined" style="font-size:14px">upload</span></button>
+            <input id="mq-url-e" type="url" class="img-url-input" placeholder="URL gambar..."/>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="flex-1"><label class="block text-sm font-semibold mb-1">Kunci Jawaban</label>
+          <select id="mq-kunci" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all">
+            <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+          </select>
+        </div>
+        <div class="w-28"><label class="block text-sm font-semibold mb-1">Poin</label>
+          <input id="mq-poin" type="number" min="1" value="10" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+        </div>
+      </div>
+      <p id="err-soal" class="hidden text-sm text-error"></p>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button id="mq-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
+      <button id="mq-simpan" class="flex-1 bg-primary text-on-primary font-semibold rounded-full py-2.5 hover:bg-tertiary transition-colors">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal token (lihat token aktif) -->
+<div id="modal-token" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-sm fade-in text-center">
+    <div class="inline-flex items-center justify-center w-14 h-14 bg-secondary-container text-primary rounded-2xl mb-4">
+      <span class="material-symbols-outlined text-3xl">key</span>
+    </div>
+    <h3 class="font-display text-lg font-bold mb-1">Token Aktif</h3>
+    <p id="modal-token-nama" class="text-sm text-text-muted mb-3"></p>
+    <div id="modal-token-val" class="font-display text-3xl font-bold tracking-[0.15em] text-primary bg-secondary-container/60 rounded-xl px-6 py-4 select-all"></div>
+    <div class="flex gap-3 mt-5">
+      <button id="mt-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Tutup</button>
+      <button id="mt-copy" class="flex-1 bg-primary text-on-primary font-semibold rounded-full py-2.5 hover:bg-tertiary transition-colors flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">content_copy</span> Salin
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal hapus konfirmasi -->
+<div id="modal-hapus" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-sm fade-in">
+    <h3 class="font-display text-lg font-bold mb-2" id="modal-hapus-title">Hapus?</h3>
+    <p class="text-sm text-on-surface-variant" id="modal-hapus-desc">Tindakan ini tidak dapat dibatalkan.</p>
+    <input type="hidden" id="modal-hapus-idx"/>
+    <div class="flex gap-3 mt-5">
+      <button id="mhp-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
+      <button id="mhp-hapus" class="flex-1 bg-error text-on-error font-semibold rounded-full py-2.5 hover:opacity-90 transition-opacity">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   API LAYER - Supabase (GH Pages)
+   ============================================================ */
+const SUPABASE_READY = (() => {
+  try {
+    if (typeof SUPABASE_URL === "undefined" || !SUPABASE_URL.startsWith("https://")) {
+      throw new Error("config.js belum diisi");
+    }
+    if (typeof supabase === "undefined" || !supabase.createClient) {
+      throw new Error("supabase-js gagal dimuat");
+    }
+    return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.error("[SUPABASE]", e.message || e);
+    return null;
+  }
+})();
+
+function rowToSiswa(r) {
+  return {
+    NIS: r.nis, Nama: r.nama, Kelas: r.kelas, Paket_Soal: r.paket_soal,
+    Status: r.status, Token_Aktif: r.token_aktif,
+    Waktu_Mulai: r.waktu_mulai ? Date.parse(r.waktu_mulai) : null,
+    Waktu_Selesai: r.waktu_selesai ? Date.parse(r.waktu_selesai) : null,
+    Skor: r.skor !== null && r.skor !== undefined ? Number(r.skor) : null
+  };
+}
+
+const API = {
+  validateAdminPin: async (pin) => {
+    if (!SUPABASE_READY) return { valid: false };
+    const { data, error } = await SUPABASE_READY.rpc("cek_pin_admin", { pin_param: pin });
+    if (error) { console.error(error); return { valid: false }; }
+    return data || { valid: false };
+  },
+
+  getAllSiswa: async () => {
+    if (!SUPABASE_READY) return [];
+    const { data, error } = await SUPABASE_READY.from("siswa").select("*").order("nis");
+    if (error) { console.error(error); return []; }
+    return (data || []).map(rowToSiswa);
+  },
+
+  getDashboardStats: async () => {
+    const siswa = await API.getAllSiswa();
+    const total = siswa.length;
+    const mengerjakan = siswa.filter(s => s.Status === "Mengerjakan").length;
+    const terkunci = siswa.filter(s => s.Status === "Terkunci").length;
+    const selesai = siswa.filter(s => s.Status === "Selesai").length;
+    const skorArr = siswa.filter(s => s.Skor != null).map(s => s.Skor);
+    const avgSkor = skorArr.length ? Math.round(skorArr.reduce((a, b) => a + b, 0) / skorArr.length) : 0;
+    return { total, mengerjakan, terkunci, selesai, avgSkor, siswa };
+  },
+
+  simpanSiswa: async (nis, nama, kelas, editIdx) => {
+    if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
+    if (editIdx !== undefined && editIdx >= 0) {
+      const siswa = await API.getAllSiswa();
+      const target = siswa[editIdx];
+      if (!target) return { ok: false, reason: "Data tidak ditemukan." };
+      const { error } = await SUPABASE_READY.from("siswa").update({ nis, nama, kelas }).eq("nis", target.NIS);
+      if (error) return { ok: false, reason: error.message };
+      return { ok: true };
+    }
+    const { data: dup } = await SUPABASE_READY.from("siswa").select("nis").eq("nis", nis).maybeSingle();
+    if (dup) return { ok: false, reason: "NIS sudah ada." };
+    const { error } = await SUPABASE_READY.from("siswa").insert({ nis, nama, kelas, status: "Belum Mulai" });
+    if (error) return { ok: false, reason: error.message };
+    return { ok: true };
+  },
+
+  hapusSiswa: async (idx) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const siswa = await API.getAllSiswa();
+    const target = siswa[idx];
+    if (!target) return { ok: false };
+    await SUPABASE_READY.from("jawaban").delete().eq("nis", target.NIS);
+    await SUPABASE_READY.from("log_aktivitas").insert({ nis: target.NIS, event: "Hapus_Siswa", detail: target.Nama });
+    const { error } = await SUPABASE_READY.from("siswa").delete().eq("nis", target.NIS);
+    if (error) return { ok: false };
+    return { ok: true };
+  },
+
+  generateTokenSiswa: async (nis) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { data, error } = await SUPABASE_READY.rpc("generate_token_siswa", { nis_param: nis });
+    if (error) { console.error(error); return { ok: false }; }
+    return data || { ok: false };
+  },
+
+  getSoalByPaket: async (paket) => {
+    if (!SUPABASE_READY) return [];
+    const { data, error } = await SUPABASE_READY.rpc("get_soal_guru", { paket_param: paket });
+    if (error) { console.error(error); return []; }
+    return data || [];
+  },
+
+  simpanSoalGuru: async (paket, idx, data) => {
+    if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
+    const { error } = await SUPABASE_READY.rpc("simpan_soal_guru", {
+      paket_param: paket,
+      idx_param: (idx !== undefined && idx >= 0) ? idx : -1,
+      pertanyaan_param: data.Pertanyaan,
+      a_param: data.A, b_param: data.B, c_param: data.C, d_param: data.D,
+      e_param: data.E || "", kunci_param: data.Kunci, poin_param: data.Poin
+    });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    return { ok: true };
+  },
+
+  hapusSoalGuru: async (paket, idx) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { error } = await SUPABASE_READY.rpc("hapus_soal_guru", { paket_param: paket, idx_param: idx });
+    if (error) { console.error(error); return { ok: false }; }
+    return { ok: true };
+  },
+
+  getConfigAll: async () => {
+    if (!SUPABASE_READY) return {};
+    const { data, error } = await SUPABASE_READY.rpc("get_config_guru");
+    if (error) { console.error(error); return {}; }
+    return data || {};
+  },
+
+  simpanConfigAll: async (data) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { error } = await SUPABASE_READY.rpc("simpan_config_guru", { data: data });
+    if (error) { console.error(error); return { ok: false }; }
+    return { ok: true };
+  },
+
+  toggleUlanganGuru: async () => {
+    if (!SUPABASE_READY) return { ok: false, value: "" };
+    const { data, error } = await SUPABASE_READY.rpc("toggle_ulangan_guru");
+    if (error) { console.error(error); return { ok: false, value: "" }; }
+    return data || { ok: false, value: "" };
+  },
+
+  getLogData: async (filter) => {
+    if (!SUPABASE_READY) return [];
+    let q = SUPABASE_READY.from("log_aktivitas").select("*").order("timestamp", { ascending: false }).limit(500);
+    if (filter) q = q.eq("event", filter);
+    const { data, error } = await q;
+    if (error) { console.error(error); return []; }
+    const siswa = await API.getAllSiswa();
+    const namaMap = {};
+    siswa.forEach(s => { namaMap[s.NIS] = s.Nama; });
+    return (data || []).map(l => ({
+      NIS: l.nis, Nama: namaMap[l.nis] || "-", Event: l.event,
+      Timestamp: l.timestamp, Detail: l.detail
+    }));
+  },
+
+  resetAllData: async () => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { error } = await SUPABASE_READY.rpc("reset_all_data");
+    if (error) { console.error(error); return { ok: false }; }
+    return { ok: true };
+  },
+
+  uploadGambar: async (base64Data, fileName, mimeType) => {
+    if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
+    try {
+      const buf = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      if (buf.byteLength > 2 * 1024 * 1024) return { ok: false, reason: "Ukuran gambar maksimal 2MB." };
+      const path = Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "-" + String(fileName).replace(/[^a-zA-Z0-9._-]/g, "_");
+      const { error } = await SUPABASE_READY.storage.from("gambar-soal").upload(path, buf, { contentType: mimeType || "image/jpeg" });
+      if (error) return { ok: false, reason: "Gagal upload: " + error.message };
+      const url = SUPABASE_READY.storage.from("gambar-soal").getPublicUrl(path).data.publicUrl;
+      return { ok: true, url: url, fileName: fileName };
+    } catch (e) {
+      console.error(e);
+      return { ok: false, reason: "Gagal upload gambar." };
+    }
+  }
+};
+
+async function call(fnName, args) {
+  const fn = API[fnName];
+  if (!fn) throw new Error("Fungsi tidak dikenal: " + fnName);
+  try {
+    return await fn.apply(null, args);
+  } catch (e) {
+    console.error("[API]", fnName, e);
+    return { ok: false, reason: "Gagal terhubung ke database: " + (e.message || e) };
+  }
+}
+
+const $ = (id) => document.getElementById(id);
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+const VIEWS = [
+  { id:"dashboard",   icon:"dashboard",    label:"Dashboard" },
+  { id:"siswa",       icon:"group",        label:"Kelola Siswa" },
+  { id:"soal",        icon:"quiz",         label:"Kelola Soal" },
+  { id:"config",      icon:"settings",     label:"Config" },
+  { id:"log",         icon:"history",      label:"Log Aktivitas" }
+];
+let currentView = "dashboard";
+
+function buildNav(container) {
+  container.innerHTML = "";
+  VIEWS.forEach(v => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.view = v.id;
+    btn.className = "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all text-on-surface-variant hover:bg-secondary-container/50 hover:text-primary";
+    btn.innerHTML = '<span class="material-symbols-outlined text-[20px]">'+v.icon+'</span><span>'+v.label+'</span>';
+    container.appendChild(btn);
+  });
+}
+function buildMobileTabs(container) {
+  container.innerHTML = "";
+  VIEWS.forEach(v => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.view = v.id;
+    btn.className = "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all border-border-subtle text-on-surface-variant";
+    btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">'+v.icon+'</span>'+v.label;
+    container.appendChild(btn);
+  });
+}
+
+function switchView(id) {
+  currentView = id;
+  renderView();
+  // Update nav highlights
+  ["sidebar-nav","drawer-nav"].forEach(navId => {
+    $(navId).querySelectorAll("button").forEach(b => {
+      if (b.dataset.view === id) { b.classList.add("bg-secondary-container","text-primary"); b.classList.remove("text-on-surface-variant","hover:bg-secondary-container/50"); }
+      else { b.classList.remove("bg-secondary-container","text-primary"); b.classList.add("text-on-surface-variant","hover:bg-secondary-container/50"); }
+    });
+  });
+  $("mobile-tabs").querySelectorAll("button").forEach(b => {
+    if (b.dataset.view === id) { b.classList.add("bg-primary","text-on-primary","border-primary"); b.classList.remove("border-border-subtle","text-on-surface-variant"); }
+    else { b.classList.remove("bg-primary","text-on-primary","border-primary"); b.classList.add("border-border-subtle","text-on-surface-variant"); }
+  });
+  closeDrawer();
+}
+
+function closeDrawer() { $("mobile-drawer").classList.add("hidden"); }
+function openDrawer() { $("mobile-drawer").classList.remove("hidden"); }
+
+/* ============================================================
+   VIEW RENDERS
+   ============================================================ */
+async function renderView() {
+  const fns = { dashboard: renderDashboard, siswa: renderSiswa, soal: renderSoal, config: renderConfig, log: renderLog };
+  (fns[currentView] || fns.dashboard)();
+}
+
+/* --- DASHBOARD --- */
+async function renderDashboard() {
+  const stats = await call("getDashboardStats", []);
+  const { total, mengerjakan, terkunci, selesai, avgSkor, siswa } = stats;
+
+  let html = `
+    <h2 class="font-display text-xl md:text-2xl font-bold mb-6">Dashboard</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+      ${statCard("group","Total Siswa",total,"secondary-container","primary")}
+      ${statCard("pending","Mengerjakan",mengerjakan,"bg-blue-100 text-blue-700")}
+      ${statCard("lock","Terkunci",terkunci,"error-container","on-error-container")}
+      ${statCard("check_circle","Selesai",selesai,"bg-emerald-100 text-emerald-700")}
+      ${statCard("star","Rata-rata Skor",avgSkor,"secondary-container","primary")}
+    </div>
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+      <h3 class="font-display font-bold text-base">Daftar Siswa</h3>
+      <div class="flex gap-2 sm:ml-auto w-full sm:w-auto">
+        <div class="relative flex-1 sm:flex-initial">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+          <input id="dash-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-52 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all"/>
+        </div>
+        <select id="dash-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+          <option value="">Semua Status</option>
+          <option value="Belum Mulai">Belum Mulai</option>
+          <option value="Mengerjakan">Mengerjakan</option>
+          <option value="Terkunci">Terkunci</option>
+          <option value="Selesai">Selesai</option>
+        </select>
+      </div>
+    </div>
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-border-subtle">
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">NIS</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">Nama</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Kelas</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Paket</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Status</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Skor</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Token</th>
+          </tr></thead>
+          <tbody id="dash-body"></tbody>
+        </table>
+      </div>
+    </div>`;
+
+  $("main-area").innerHTML = html;
+
+  async function renderTable() {
+    const siswa = await call("getAllSiswa", []);
+    const q = ($("dash-search").value||"").toLowerCase();
+    const filter = $("dash-filter").value;
+    let rows = siswa.filter(s => {
+      if (filter && s.Status !== filter) return false;
+      if (q && !s.NIS.includes(q) && !s.Nama.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const tbody = $("dash-body");
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-text-muted">Tidak ada data.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(s => {
+      const statusCls = STATUS_CLS[s.Status] || "";
+      const skor = s.Skor!=null ? s.Skor : "-";
+      return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+        <td class="px-4 py-3 font-semibold tnum">${s.NIS}</td>
+        <td class="px-4 py-3">${s.Nama}</td>
+        <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${s.Kelas}</td>
+        <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${s.Paket_Soal||'-'}</span></td>
+        <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${s.Status}</span></td>
+        <td class="px-4 py-3 text-center tnum font-semibold hidden sm:table-cell">${skor}</td>
+        <td class="px-4 py-3 text-center">${s.Token_Aktif ? '<button onclick="viewToken(\''+s.NIS+'\')" class="text-primary hover:text-tertiary transition-colors" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : '<span class="text-outline-variant">-</span>'}</td>
+      </tr>`;
+    }).join("");
+  }
+  $("dash-search").addEventListener("input", renderTable);
+  $("dash-filter").addEventListener("change", renderTable);
+  renderTable();
+}
+
+const STATUS_CLS = {
+  "Belum Mulai": "bg-gray-100 text-gray-600",
+  "Mengerjakan": "bg-blue-100 text-blue-700",
+  "Terkunci": "bg-error-container text-on-error-container",
+  "Selesai": "bg-emerald-100 text-emerald-700"
+};
+
+function statCard(icon, label, value, bg, tc) {
+  return `<div class="${bg||'secondary-container'} ${tc||'primary'} rounded-2xl p-4 md:p-5 flex items-center gap-3">
+    <span class="material-symbols-outlined text-[22px] opacity-80">${icon}</span>
+    <div><div class="font-display text-xl md:text-2xl font-bold tnum">${value}</div><div class="text-xs opacity-75 font-medium">${label}</div></div>
+  </div>`;
+}
+
+async function viewToken(nis) {
+  const siswa = await call("getAllSiswa", []);
+  const s = siswa.find(x=>x.NIS===nis);
+  if (!s || !s.Token_Aktif) return;
+  $("modal-token-nama").textContent = s.Nama + " (" + s.NIS + ")";
+  $("modal-token-val").textContent = s.Token_Aktif;
+  $("modal-token").classList.remove("hidden"); $("modal-token").classList.add("flex");
+}
+function closeModalToken() { $("modal-token").classList.add("hidden"); $("modal-token").classList.remove("flex"); }
+
+/* --- KELOLA SISWA --- */
+async function renderSiswa() {
+  let html = `
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Siswa</h2>
+      <button onclick="openModalSiswa()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary transition-colors shadow-soft">
+        <span class="material-symbols-outlined text-[18px]">person_add</span> Tambah
+      </button>
+    </div>
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-border-subtle">
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">NIS</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">Nama</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Kelas</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Paket</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Status</th>
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Aksi</th>
+          </tr></thead>
+          <tbody id="siswa-body"></tbody>
+        </table>
+      </div>
+    </div>`;
+  $("main-area").innerHTML = html;
+  await renderSiswaTable();
+}
+async function renderSiswaTable() {
+  const siswa = await call("getAllSiswa", []);
+  const tbody = $("siswa-body");
+  if (!siswa.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>'; return; }
+  tbody.innerHTML = siswa.map((s,i) => {
+    const statusCls = STATUS_CLS[s.Status]||"";
+    return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+      <td class="px-4 py-3 font-semibold tnum">${s.NIS}</td>
+      <td class="px-4 py-3">${s.Nama}</td>
+      <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${s.Kelas}</td>
+      <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${s.Paket_Soal||'-'}</span></td>
+      <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${s.Status}</span></td>
+      <td class="px-4 py-3">
+        <div class="flex items-center justify-center gap-1">
+          <button onclick="openModalSiswa(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+          <button onclick="confirmGenToken(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[18px]">key</span></button>
+          <button onclick="confirmHapusSiswa(${i})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function openModalSiswa(idx) {
+  const isEdit = idx !== undefined && idx >= 0;
+  $("modal-siswa-title").textContent = isEdit ? "Edit Siswa" : "Tambah Siswa";
+  $("modal-siswa-idx").value = isEdit ? idx : -1;
+  if (isEdit) {
+    const siswa = await call("getAllSiswa", []);
+    const s = siswa[idx];
+    $("ms-nis").value = s.NIS; $("ms-nama").value = s.Nama; $("ms-kelas").value = s.Kelas;
+  } else { $("ms-nis").value=""; $("ms-nama").value=""; $("ms-kelas").value=""; }
+  setErr($("err-siswa"));
+  $("modal-siswa").classList.remove("hidden"); $("modal-siswa").classList.add("flex");
+}
+function closeModalSiswa() { $("modal-siswa").classList.add("hidden"); $("modal-siswa").classList.remove("flex"); }
+async function simpanSiswa() {
+  const nis = $("ms-nis").value.trim(), nama = $("ms-nama").value.trim(), kelas = $("ms-kelas").value.trim();
+  if (!nis||!nama||!kelas) { setErr($("err-siswa"),"Semua field wajib diisi."); return; }
+  const idx = parseInt($("modal-siswa-idx").value, 10);
+  const editIdx = idx >= 0 ? idx : undefined;
+  const res = await call("simpanSiswa", [nis, nama, kelas, editIdx]);
+  if (!res.ok) { setErr($("err-siswa"), res.reason); return; }
+  closeModalSiswa(); await renderSiswaTable(); toast("Siswa tersimpan","check_circle");
+}
+
+async function confirmGenToken(idx) {
+  const siswa = await call("getAllSiswa", []);
+  const s = siswa[idx];
+  const res = await call("generateTokenSiswa", [s.NIS]);
+  if (!res.ok) return;
+  await renderSiswaTable();
+  $("modal-token-nama").textContent = s.Nama + " (" + s.NIS + ")";
+  $("modal-token-val").textContent = res.token;
+  $("modal-token").classList.remove("hidden"); $("modal-token").classList.add("flex");
+  toast("Token baru digenerate","key");
+}
+function confirmHapusSiswa(idx) {
+  $("modal-hapus-title").textContent = "Hapus Siswa?";
+  $("modal-hapus-desc").textContent = "Menghapus data siswa dan semua jawabannya. Tindakan ini tidak dapat dibatalkan.";
+  $("modal-hapus-idx").value = idx;
+  $("modal-hapus").classList.remove("hidden"); $("modal-hapus").classList.add("flex");
+}
+
+/* --- KELOLA SOAL --- */
+let soalPaket = "A";
+async function renderSoal() {
+  let html = `
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2>
+      <div class="flex gap-2">
+        <div class="flex bg-secondary-container/60 rounded-full p-0.5">
+          <button onclick="switchSoalPaket('A')" id="spA" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket A</button>
+          <button onclick="switchSoalPaket('B')" id="spB" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket B</button>
+        </div>
+        <button onclick="openModalSoal()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary transition-colors shadow-soft">
+          <span class="material-symbols-outlined text-[18px]">add</span> Tambah
+        </button>
+      </div>
+    </div>
+    <div id="soal-list"></div>`;
+  $("main-area").innerHTML = html;
+  switchSoalPaket(soalPaket);
+}
+async function switchSoalPaket(p) {
+  soalPaket = p;
+  $("spA").className = p==="A" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
+  $("spB").className = p==="B" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
+  await renderSoalList();
+}
+async function renderSoalList() {
+  const soal = await call("getSoalByPaket", [soalPaket]);
+  const el = $("soal-list");
+  if (!soal.length) { el.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted">Belum ada soal untuk Paket '+soalPaket+'.</div>'; return; }
+  el.innerHTML = soal.map((q,i) => `
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-5 mb-3">
+      <div class="flex items-start gap-3 mb-3">
+        <span class="inline-flex items-center justify-center w-8 h-8 bg-secondary-container text-primary font-display font-bold rounded-full text-sm shrink-0">${q.No}</span>
+        <p class="font-semibold text-sm leading-relaxed flex-1">${sanitizeHTML(q.Pertanyaan)}</p>
+        <span class="shrink-0 text-xs font-semibold text-text-muted">${q.Poin} poin</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        ${["A","B","C","D","E"].map(l => `<div class="text-sm px-3 py-2 rounded-xl border ${q.Kunci===l?'border-primary bg-primary-fixed/40 text-primary font-semibold':'border-border-subtle text-on-surface-variant'}">${l}. ${sanitizeHTML(q[l])}</div>`).join("")}
+      </div>
+      <div class="flex gap-1 justify-end">
+        <button onclick="openModalSoal(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+        <button onclick="confirmHapusSoal(${i})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+      </div>
+    </div>`).join("");
+}
+async function openModalSoal(idx) {
+  var soal = await call("getSoalByPaket", [soalPaket]);
+  var isEdit = idx !== undefined && idx >= 0;
+  $("modal-soal-title").textContent = isEdit ? "Edit Soal" : "Tambah Soal (Paket " + soalPaket + ")";
+  $("modal-soal-idx").value = isEdit ? idx : -1;
+  for (var j = 0; j < FIELD_MAP.length; j++) clearImgState(FIELD_MAP[j].key);
+
+  if (isEdit) {
+    var q = soal[idx];
+    for (var i = 0; i < FIELD_MAP.length; i++) {
+      var fm = FIELD_MAP[i];
+      var rawVal = String(q[fm.field] || "");
+      var imgMatch = rawVal.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+      var textVal = rawVal.replace(/<img[^>]*>/g, "").trim();
+      var inputId = "mq-" + fm.key;
+      if (fm.field === "Pertanyaan") inputId = "mq-pertanyaan";
+      $(inputId).value = textVal;
+      if (imgMatch) {
+        var pvEl = $("mq-preview-" + fm.key);
+        pvEl.setAttribute("data-existing-img", imgMatch[1]);
+        pvEl.innerHTML = '<div class="img-preview-wrap"><img src="' + convertDriveUrl(imgMatch[1]) + '" alt="preview" onerror="this.parentNode.innerHTML=\'\'"/><button type="button" class="img-preview-remove" onclick="removeExistingImg(\'' + fm.key + '\')">&times;</button></div>';
+        var urlField = $("mq-url-" + fm.key);
+        if (urlField) urlField.value = convertDriveUrl(imgMatch[1]);
+      }
+    }
+    $("mq-kunci").value = q.Kunci;
+    $("mq-poin").value = q.Poin;
+  } else {
+    $("mq-pertanyaan").value = "";
+    $("mq-a").value = ""; $("mq-b").value = ""; $("mq-c").value = "";
+    $("mq-d").value = ""; $("mq-e").value = "";
+    $("mq-kunci").value = "A"; $("mq-poin").value = "10";
+  }
+  setErr($("err-soal"));
+  $("modal-soal").classList.remove("hidden"); $("modal-soal").classList.add("flex");
+}
+
+function removeExistingImg(fieldKey) {
+  var pv = $("mq-preview-" + fieldKey);
+  var urlField = $("mq-url-" + fieldKey);
+  pv.innerHTML = "";
+  pv.removeAttribute("data-existing-img");
+  pv.setAttribute("data-img-removed", "true");
+  if (urlField) urlField.value = "";
+}
+function closeModalSoal() { $("modal-soal").classList.add("hidden"); $("modal-soal").classList.remove("flex"); }
+
+var FIELD_MAP = [
+  { key: "pertanyaan", field: "Pertanyaan" },
+  { key: "a", field: "A" },
+  { key: "b", field: "B" },
+  { key: "c", field: "C" },
+  { key: "d", field: "D" },
+  { key: "e", field: "E" }
+];
+
+function triggerFileUpload(fieldKey) {
+  var fi = $("mq-file-" + fieldKey);
+  if (!fi) { toast("Error: file input tidak ditemukan", "error"); return; }
+  fi.value = "";
+  fi.click();
+}
+
+function compressImage(file, maxWidth, quality) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement("canvas");
+        var w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          var bReader = new FileReader();
+          bReader.onload = function() {
+            resolve({
+              base64: bReader.result.split(",")[1],
+              mimeType: "image/jpeg",
+              fileName: file.name.replace(/\.[^.]+$/, ".jpg")
+            });
+          };
+          bReader.onerror = function() { reject(new Error("Gagal membaca hasil kompresi")); };
+          bReader.readAsDataURL(blob);
+        }, "image/jpeg", quality || 0.8);
+      };
+      img.onerror = function() { reject(new Error("Gagal memuat gambar")); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function() { reject(new Error("Gagal membaca file")); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadCompressed(fileInputId, base64, fileName, mimeType) {
+  var fi = $(fileInputId);
+  var f = fi && fi.files && fi.files[0];
+  var finalName = f ? f.name : (fileName || "gambar.jpg");
+  var finalMime = f ? f.type : (mimeType || "image/jpeg");
+  var res = await call("uploadGambar", [base64, finalName, finalMime]);
+  if (!res.ok) { toast(res.reason || "Gagal upload gambar", "error"); return null; }
+  return res.url;
+}
+
+function clearImgState(fieldKey) {
+  var fi = $("mq-file-" + fieldKey);
+  var pv = $("mq-preview-" + fieldKey);
+  var urlInput = $("mq-url-" + fieldKey);
+  if (fi) fi.value = "";
+  if (urlInput) urlInput.value = "";
+  if (pv) {
+    pv.innerHTML = "";
+    pv.removeAttribute("data-existing-img");
+    pv.removeAttribute("data-img-removed");
+    pv.removeAttribute("data-pending-base64");
+    pv.removeAttribute("data-pending-name");
+    pv.removeAttribute("data-pending-mime");
+    pv.removeAttribute("data-pending-url");
+  }
+}
+
+async function simpanSoal() {
+  var pertanyaan = $("mq-pertanyaan").value.trim();
+  var a = $("mq-a").value.trim(), b = $("mq-b").value.trim(), c = $("mq-c").value.trim();
+  var d = $("mq-d").value.trim(), e = $("mq-e").value.trim();
+  var kunci = $("mq-kunci").value, poin = parseInt($("mq-poin").value, 10) || 10;
+  if (!pertanyaan || !a || !b || !c || !d) { setErr($("err-soal"), "Semua field wajib diisi."); return; }
+
+  var idx = parseInt($("modal-soal-idx").value, 10);
+  var editIdx = idx >= 0 ? idx : undefined;
+
+  var data = { Pertanyaan: pertanyaan, A: a, B: b, C: c, D: d, E: e, Kunci: kunci, Poin: poin };
+
+  for (var i = 0; i < FIELD_MAP.length; i++) {
+    var fm = FIELD_MAP[i];
+    var previewEl = $("mq-preview-" + fm.key);
+    var urlInput = $("mq-url-" + fm.key);
+    var imgUrl = "";
+
+    var urlVal = urlInput ? urlInput.value.trim() : "";
+    var hasBase64 = previewEl && previewEl.getAttribute("data-pending-base64");
+    var existingImg = previewEl ? previewEl.getAttribute("data-existing-img") : "";
+    var removed = previewEl && previewEl.getAttribute("data-img-removed") === "true";
+
+    if (urlVal) {
+      imgUrl = convertDriveUrl(urlVal);
+    } else if (hasBase64) {
+      var base64 = previewEl.getAttribute("data-pending-base64");
+      var fName = previewEl.getAttribute("data-pending-name") || "gambar.jpg";
+      var fMime = previewEl.getAttribute("data-pending-mime") || "image/jpeg";
+      toast("Upload gambar...", "cloud_upload");
+      imgUrl = await uploadCompressed("mq-file-" + fm.key, base64, fName, fMime);
+      if (!imgUrl) { toast("Gagal upload gambar " + fm.field, "error"); }
+    } else if (existingImg && !removed) {
+      imgUrl = existingImg;
+    }
+
+    if (imgUrl && data[fm.field].indexOf(imgUrl) === -1) {
+      data[fm.field] = '<img src="' + imgUrl + '" class="max-w-full max-h-[300px] rounded-xl" alt="gambar soal"/> ' + data[fm.field];
+    } else if (removed) {
+      data[fm.field] = data[fm.field].replace(/<img[^>]*>/g, "").trim();
+    }
+  }
+
+  await call("simpanSoalGuru", [soalPaket, editIdx, data]);
+  for (var j = 0; j < FIELD_MAP.length; j++) clearImgState(FIELD_MAP[j].key);
+  closeModalSoal();
+  await renderSoalList();
+  toast("Soal tersimpan", "check_circle");
+}
+function confirmHapusSoal(idx) {
+  $("modal-hapus-title").textContent = "Hapus Soal?";
+  $("modal-hapus-desc").textContent = "Soal akan dihapus permanen dari Paket "+soalPaket+".";
+  $("modal-hapus-idx").value = "soal_"+idx;
+  $("modal-hapus").classList.remove("hidden"); $("modal-hapus").classList.add("flex");
+}
+
+/* --- CONFIG --- */
+async function renderConfig() {
+  const c = await call("getConfigAll", []);
+  $("main-area").innerHTML = `
+    <h2 class="font-display text-xl md:text-2xl font-bold mb-6">Config</h2>
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-6 max-w-xl">
+      <div class="space-y-5">
+        <div><label class="block text-sm font-semibold mb-1">Judul Ulangan</label>
+          <input id="cfg-judul" value="${esc(c.JUDUL_ULANGAN)}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+        <div class="flex gap-3">
+          <div class="flex-1"><label class="block text-sm font-semibold mb-1">Durasi (menit)</label>
+            <input id="cfg-durasi" type="number" min="1" value="${c.DURASI_MENIT}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+          <div class="flex-1"><label class="block text-sm font-semibold mb-1">Token Master</label>
+            <input id="cfg-token" value="${esc(c.TOKEN_MASTER)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+        </div>
+        <div class="flex gap-3">
+          <div class="flex-1"><label class="block text-sm font-semibold mb-1">Admin PIN</label>
+            <input id="cfg-pin" value="${esc(c.ADMIN_PIN)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+          <div class="flex-1"><label class="block text-sm font-semibold mb-1">Status Ulangan</label>
+            <button id="cfg-toggle" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all"></button></div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="handleResetData()" class="bg-secondary-container text-primary font-semibold rounded-full px-5 py-2.5 text-sm hover:bg-primary-fixed transition-colors">Reset Data</button>
+        <button onclick="handleSimpanConfig()" class="ml-auto bg-primary text-on-primary font-semibold rounded-full px-6 py-2.5 text-sm hover:bg-tertiary transition-colors shadow-soft">Simpan Config</button>
+      </div>
+      <p class="text-xs text-text-muted mt-4">"Reset Data" akan mengembalikan siswa, soal, dan log ke data awal (demo). Config tidak di-reset.</p>
+    </div>`;
+  await updateToggle();
+  $("cfg-toggle").addEventListener("click", handleToggleUlangan);
+}
+async function updateToggle() {
+  const c = await call("getConfigAll", []);
+  const on = c.ULANGAN_AKTIF === "YA";
+  $("cfg-toggle").textContent = on ? "Aktif" : "Nonaktif";
+  $("cfg-toggle").className = on
+    ? "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-emerald-500 bg-emerald-50 text-emerald-700"
+    : "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-outline-variant bg-gray-100 text-gray-500";
+}
+async function handleToggleUlangan() {
+  const res = await call("toggleUlanganGuru", []);
+  await updateToggle();
+  toast("Status: " + res.value, "info");
+}
+async function handleSimpanConfig() {
+  const c = await call("getConfigAll", []);
+  await call("simpanConfigAll", [{
+    JUDUL_ULANGAN: $("cfg-judul").value.trim() || c.JUDUL_ULANGAN,
+    DURASI_MENIT: parseInt($("cfg-durasi").value,10) || c.DURASI_MENIT,
+    TOKEN_MASTER: $("cfg-token").value.trim() || c.TOKEN_MASTER,
+    ADMIN_PIN: $("cfg-pin").value.trim() || c.ADMIN_PIN
+  }]);
+  toast("Config tersimpan","check_circle");
+}
+async function handleResetData() {
+  await call("resetAllData", []);
+  toast("Data di-reset","check_circle");
+  await renderView();
+}
+
+/* --- LOG AKTIVITAS --- */
+async function renderLog() {
+  $("main-area").innerHTML = `
+    <h2 class="font-display text-xl md:text-2xl font-bold mb-6">Log Aktivitas</h2>
+    <div class="flex gap-2 mb-4">
+      <select id="log-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <option value="">Semua Event</option>
+        <option value="Login">Login</option>
+        <option value="Mulai">Mulai</option>
+        <option value="Tab_Switch_Terdeteksi">Tab Switch Terdeteksi</option>
+        <option value="Terkunci">Terkunci</option>
+        <option value="Lanjut_Mengerjakan">Lanjut Mengerjakan</option>
+        <option value="Generate_Ulang_Token">Generate Token</option>
+        <option value="Submit">Submit</option>
+      </select>
+    </div>
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-border-subtle">
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">Waktu</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">NIS</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Nama</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">Event</th>
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant hidden md:table-cell">Detail</th>
+          </tr></thead>
+          <tbody id="log-body"></tbody>
+        </table>
+      </div>
+    </div>`;
+  $("log-filter").addEventListener("change", renderLogTable);
+  await renderLogTable();
+}
+const EVENT_CLS = {
+  "Login": "bg-blue-100 text-blue-700",
+  "Mulai": "bg-emerald-100 text-emerald-700",
+  "Tab_Switch_Terdeteksi": "bg-orange-100 text-orange-700",
+  "Terkunci": "bg-error-container text-on-error-container",
+  "Lanjut_Mengerjakan": "bg-emerald-100 text-emerald-700",
+  "Generate_Ulang_Token": "bg-secondary-container text-primary",
+  "Submit": "bg-indigo-100 text-indigo-700"
+};
+async function renderLogTable() {
+  const filter = $("log-filter").value;
+  const rows = await call("getLogData", [filter || undefined]);
+  const tbody = $("log-body");
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-text-muted">Tidak ada log.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(l => {
+    const evCls = EVENT_CLS[l.Event] || "bg-gray-100 text-gray-600";
+    const evLabel = l.Event.replace(/_/g," ");
+    return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+      <td class="px-4 py-3 text-xs text-on-surface-variant tnum">${fmtTs(l.Timestamp)}</td>
+      <td class="px-4 py-3 font-semibold tnum">${l.NIS}</td>
+      <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${l.Nama||'-'}</td>
+      <td class="px-4 py-3"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${evCls}">${evLabel}</span></td>
+      <td class="px-4 py-3 text-xs text-on-surface-variant hidden md:table-cell max-w-[200px] truncate">${l.Detail||'-'}</td>
+    </tr>`;
+  }).join("");
+}
+
+/* ============================================================
+   SHARED HELPERS
+   ============================================================ */
+function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function setErr(el, msg) { if(!msg){el.classList.add("hidden");el.textContent="";return;} el.textContent=msg; el.classList.remove("hidden"); }
+function convertDriveUrl(url) {
+  if (!url) return url;
+  var m1 = url.match(/drive\.google\.com\/file\/d\/([^\/\?]+)/);
+  if (m1) return "https://drive.google.com/uc?export=view&id=" + m1[1];
+  var m2 = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (m2) return "https://drive.google.com/uc?export=view&id=" + m2[1];
+  return url;
+}
+function sanitizeHTML(html) {
+  if (!html) return "";
+  var tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  var imgs = tmp.querySelectorAll("img");
+  imgs.forEach(function(img) {
+    var src = img.getAttribute("src") || "";
+    if (!src) { img.remove(); return; }
+    var savedSrc = convertDriveUrl(src);
+    var savedAlt = img.getAttribute("alt") || "";
+    while (img.attributes.length > 0) img.removeAttribute(img.attributes[0].name);
+    img.setAttribute("src", savedSrc);
+    img.setAttribute("alt", savedAlt);
+    img.setAttribute("onerror", "this.style.display='none'");
+    img.style.maxWidth = "100%";
+    img.style.maxHeight = "160px";
+    img.style.borderRadius = "12px";
+    img.style.objectFit = "contain";
+    img.style.display = "block";
+    img.style.marginTop = "6px";
+  });
+  var tags = tmp.querySelectorAll("*");
+  tags.forEach(function(el) {
+    if (el.tagName !== "IMG") {
+      var parent = el.parentNode;
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+    }
+  });
+  return tmp.innerHTML;
+}
+
+/* ============================================================
+   HAPUS CONFIRM BRIDGE
+   ============================================================ */
+async function handleHapus() {
+  const raw = $("modal-hapus-idx").value;
+  if (raw.startsWith("soal_")) {
+    const idx = parseInt(raw.replace("soal_",""),10);
+    await call("hapusSoalGuru", [soalPaket, idx]);
+    await renderSoalList(); toast("Soal dihapus","check_circle");
+  } else {
+    const idx = parseInt(raw,10);
+    await call("hapusSiswa", [idx]);
+    await renderSiswaTable(); toast("Siswa dihapus","check_circle");
+  }
+  $("modal-hapus").classList.add("hidden"); $("modal-hapus").classList.remove("flex");
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  // Check PIN session
+  if (sessionStorage.getItem("ulis_guru") !== "1") {
+    $("screen-pin").classList.remove("hidden"); $("screen-pin").classList.add("flex");
+    $("app-shell").classList.add("hidden"); $("app-shell").classList.remove("flex");
+    return;
+  }
+  enterApp();
+}
+function enterApp() {
+  sessionStorage.setItem("ulis_guru","1");
+  $("screen-pin").classList.add("hidden"); $("screen-pin").classList.remove("flex");
+  $("app-shell").classList.remove("hidden"); $("app-shell").classList.add("flex");
+
+  buildNav($("sidebar-nav"));
+  buildNav($("drawer-nav"));
+  buildMobileTabs($("mobile-tabs"));
+
+  ["sidebar-nav","drawer-nav"].forEach(id => {
+    $(id).addEventListener("click", e => { const btn=e.target.closest("button[data-view]"); if(btn) switchView(btn.dataset.view); });
+  });
+  $("mobile-tabs").addEventListener("click", e => { const btn=e.target.closest("button[data-view]"); if(btn) switchView(btn.dataset.view); });
+
+  switchView("dashboard");
+}
+
+// PIN login
+(function() {
+  var btnLogin = $("btn-pin-login");
+  if (!btnLogin) {
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;color:#ba1a1a;"><h2>Error: Element tidak ditemukan</h2><p>Tombol login (btn-pin-login) tidak ada di DOM. Pastikan file guru.html tidak corrupt.</p></div>';
+    return;
+  }
+  btnLogin.addEventListener("click", async function() {
+    var btn = btnLogin;
+    var pin = $("inp-pin").value.trim();
+    console.log("[PIN] click, pin length:", pin.length);
+    setErr($("err-pin"));
+    if (!pin) { setErr($("err-pin"),"PIN wajib diisi."); return; }
+    btn.disabled = true;
+    btn.querySelector("span").textContent = "Memproses...";
+    try {
+      console.log("[PIN] calling validateAdminPin...");
+      var res = await call("validateAdminPin", [pin]);
+      console.log("[PIN] result:", res);
+      if (res.valid) { enterApp(); }
+      else { setErr($("err-pin"),"PIN salah. Cek konfigurasi atau hubungi admin."); }
+    } catch(e) {
+      console.error("[PIN] catch:", e);
+      setErr($("err-pin"), "Gagal menghubungi server: " + (e.message || e));
+    } finally {
+      btn.disabled = false;
+      btn.querySelector("span").textContent = "Masuk";
+    }
+  });
+  $("inp-pin").addEventListener("keydown", function(e) { if (e.key === "Enter") btnLogin.click(); });
+})();
+$("btn-logout").addEventListener("click", () => { sessionStorage.removeItem("ulis_guru"); location.reload(); });
+$("btn-mobile-menu").addEventListener("click", openDrawer);
+$("btn-close-drawer").addEventListener("click", closeDrawer);
+$("mobile-overlay").addEventListener("click", closeDrawer);
+
+// Modal close/confirm buttons
+$("mt-batal").addEventListener("click", closeModalToken);
+$("mt-copy").addEventListener("click", () => { navigator.clipboard.writeText($("modal-token-val").textContent).then(()=>toast("Token disalin","check_circle")); });
+$("ms-batal").addEventListener("click", closeModalSiswa);
+$("ms-simpan").addEventListener("click", simpanSiswa);
+$("mq-batal").addEventListener("click", closeModalSoal);
+$("mq-simpan").addEventListener("click", simpanSoal);
+$("mhp-batal").addEventListener("click", () => { $("modal-hapus").classList.add("hidden"); $("modal-hapus").classList.remove("flex"); });
+$("mhp-hapus").addEventListener("click", handleHapus);
+
+// Image upload preview listeners (hybrid: upload + URL)
+var IMG_FIELDS = ["pertanyaan","a","b","c","d","e"];
+
+IMG_FIELDS.forEach(function(fk) {
+  // File upload change listener
+  var fi = $("mq-file-" + fk);
+  if (fi) {
+    fi.addEventListener("change", async function() {
+      if (!fi.files || !fi.files.length) return;
+      var file = fi.files[0];
+      var allowed = ["image/jpeg","image/png","image/gif","image/webp"];
+      if (allowed.indexOf(file.type) === -1) {
+        toast("Format tidak didukung. Gunakan JPG, PNG, GIF, atau WebP.", "error");
+        fi.value = "";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast("Ukuran file maksimal 5MB.", "error");
+        fi.value = "";
+        return;
+      }
+      var pv = $("mq-preview-" + fk);
+      pv.innerHTML = '<div style="padding:8px;text-align:center;color:#64748B;font-size:11px;">Memproses...</div>';
+      try {
+        var compressed = await compressImage(file, 800, 0.8);
+        pv.removeAttribute("data-img-removed");
+        pv.setAttribute("data-pending-base64", compressed.base64);
+        pv.setAttribute("data-pending-name", compressed.fileName);
+        pv.setAttribute("data-pending-mime", compressed.mimeType);
+        pv.innerHTML = '<div class="img-preview-wrap"><img src="data:' + compressed.mimeType + ';base64,' + compressed.base64 + '" alt="preview"/><button type="button" class="img-preview-remove" onclick="removePendingImg(\'' + fk + '\')">&times;</button></div>';
+      } catch (err) {
+        toast("Gagal: " + err.message, "error");
+        pv.innerHTML = "";
+        fi.value = "";
+      }
+    });
+  }
+
+  // URL input listener
+  var urlInput = $("mq-url-" + fk);
+  if (urlInput) {
+    urlInput.addEventListener("input", function() {
+      var pv = $("mq-preview-" + fk);
+      var url = urlInput.value.trim();
+      if (!url) {
+        pv.innerHTML = "";
+        pv.removeAttribute("data-pending-url");
+        return;
+      }
+      pv.removeAttribute("data-img-removed");
+      var converted = convertDriveUrl(url);
+      pv.setAttribute("data-pending-url", converted);
+      pv.innerHTML = '<div class="img-preview-wrap"><img src="' + esc(converted) + '" onerror="this.parentNode.innerHTML=\'<span style=color:#ba1a1a;font-size:11px>Gagal memuat</span>\'" alt="preview"/><button type="button" class="img-preview-remove" onclick="clearUrlField(\'' + fk + '\')">&times;</button></div>';
+    });
+  }
+});
+
+function removePendingImg(fieldKey) {
+  var fi = $("mq-file-" + fieldKey);
+  var pv = $("mq-preview-" + fieldKey);
+  var urlInput = $("mq-url-" + fieldKey);
+  if (fi) fi.value = "";
+  if (urlInput) urlInput.value = "";
+  if (pv) {
+    pv.innerHTML = "";
+    pv.removeAttribute("data-pending-base64");
+    pv.removeAttribute("data-pending-name");
+    pv.removeAttribute("data-pending-mime");
+    pv.removeAttribute("data-pending-url");
+    pv.removeAttribute("data-existing-img");
+    pv.setAttribute("data-img-removed", "true");
+  }
+}
+
+function clearUrlField(fieldKey) {
+  var urlInput = $("mq-url-" + fieldKey);
+  var pv = $("mq-preview-" + fieldKey);
+  if (urlInput) urlInput.value = "";
+  if (pv) { pv.innerHTML = ""; pv.removeAttribute("data-pending-url"); }
+}
+
+init();
+</script>
+</body>
+</html>
