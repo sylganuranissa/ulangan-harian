@@ -571,6 +571,33 @@ let logLimit = 50;
 let siswaSortKey = "NIS";
 let siswaSortDir = 1;
 const SISWA_SORT_PROPS = { NIS: "NIS", Nama: "Nama", Kelas: "Kelas", Paket: "Paket_Soal", Status: "Status" };
+const PAGE_SIZES = [10, 25, 50];
+let dashPage = 1, dashSize = 10;
+let siswaPage = 1, siswaSize = 10;
+
+function renderPagination(containerId, page, size, total, onChange) {
+  const el = $(containerId);
+  if (!el) return;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="flex items-center justify-center gap-3 text-sm py-3 flex-wrap">
+      <select class="px-2 py-1.5 bg-white border border-outline-variant rounded-full text-xs focus:outline-none focus:border-primary transition-all" aria-label="Ukuran per halaman">
+        ${PAGE_SIZES.map(s => `<option value="${s}" ${s===size?'selected':''}>${s} / hal</option>`).join("")}
+      </select>
+      <button data-pg="-1" class="px-4 py-1.5 bg-secondary-container text-primary font-semibold rounded-full text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed">← Prev</button>
+      <span class="text-xs font-semibold text-on-surface-variant tnum">Halaman ${page} / ${totalPages}</span>
+      <button data-pg="1" class="px-4 py-1.5 bg-secondary-container text-primary font-semibold rounded-full text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
+    </div>`;
+  const sel = el.querySelector("select");
+  const btnPrev = el.querySelector('[data-pg="-1"]');
+  const btnNext = el.querySelector('[data-pg="1"]');
+  btnPrev.disabled = page <= 1;
+  btnNext.disabled = page >= totalPages;
+  btnPrev.addEventListener("click", () => onChange(Math.max(1, page - 1)));
+  btnNext.addEventListener("click", () => onChange(Math.min(totalPages, page + 1)));
+  sel.addEventListener("change", () => onChange(1, parseInt(sel.value, 10)));
+}
 
 function buildNav(container) {
   container.innerHTML = "";
@@ -659,7 +686,8 @@ async function renderDashboard() {
           <tbody id="dash-body"></tbody>
         </table>
       </div>
-    </div>`;
+    </div>
+    <div id="dash-pagination"></div>`;
 
   $("main-area").innerHTML = html;
 
@@ -678,11 +706,15 @@ async function renderDashboard() {
       const empty = '<div class="text-center py-8 text-text-muted">Tidak ada data siswa.</div>';
       if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-text-muted">Tidak ada data.</td></tr>';
       if (cards) cards.innerHTML = empty;
+      renderPagination("dash-pagination", 1, dashSize, 0, () => {});
       return;
     }
     const indices = rows.map(s => siswa.indexOf(s));
+    const totalPages = Math.max(1, Math.ceil(indices.length / dashSize));
+    if (dashPage > totalPages) dashPage = totalPages;
+    const pageIndices = indices.slice((dashPage - 1) * dashSize, dashPage * dashSize);
     if (tbody) {
-      tbody.innerHTML = indices.map(origIdx => {
+      tbody.innerHTML = pageIndices.map(origIdx => {
         const s = siswa[origIdx];
         const statusCls = STATUS_CLS[s.Status] || "";
         const skor = s.Skor!=null ? s.Skor : "-";
@@ -698,7 +730,7 @@ async function renderDashboard() {
       }).join("");
     }
     if (cards) {
-      cards.innerHTML = indices.map(origIdx => {
+      cards.innerHTML = pageIndices.map(origIdx => {
         const s = siswa[origIdx];
         const statusCls = STATUS_CLS[s.Status] || "";
         const skor = s.Skor!=null ? s.Skor : "-";
@@ -721,9 +753,10 @@ async function renderDashboard() {
         </div>`;
       }).join("");
     }
+    renderPagination("dash-pagination", dashPage, dashSize, indices.length, (p, s) => { if (s) dashSize = s; dashPage = p; renderTable(); });
   }
-  $("dash-search").addEventListener("input", renderTable);
-  $("dash-filter").addEventListener("change", renderTable);
+  $("dash-search").addEventListener("input", () => { dashPage = 1; renderTable(); });
+  $("dash-filter").addEventListener("change", () => { dashPage = 1; renderTable(); });
   renderTable();
   clearInterval(dashboardTimer);
   dashboardTimer = setInterval(async () => {
@@ -816,7 +849,8 @@ async function renderSiswa() {
           <tbody id="siswa-body"></tbody>
         </table>
       </div>
-    </div>`;
+    </div>
+    <div id="siswa-pagination"></div>`;
   $("main-area").innerHTML = html;
   const semua = await call("getAllSiswa", []);
   const kelasSet = [...new Set(semua.map(s => s.Kelas).filter(Boolean))].sort();
@@ -825,11 +859,12 @@ async function renderSiswa() {
   let siswaSearchTimer = null;
   $("siswa-search").addEventListener("input", () => {
     clearTimeout(siswaSearchTimer);
+    siswaPage = 1;
     siswaSearchTimer = setTimeout(renderSiswaTable, 500);
   });
-  $("siswa-filter").addEventListener("change", renderSiswaTable);
-  $("siswa-paket").addEventListener("change", renderSiswaTable);
-  $("siswa-kelas").addEventListener("change", renderSiswaTable);
+  $("siswa-filter").addEventListener("change", () => { siswaPage = 1; renderSiswaTable(); });
+  $("siswa-paket").addEventListener("change", () => { siswaPage = 1; renderSiswaTable(); });
+  $("siswa-kelas").addEventListener("change", () => { siswaPage = 1; renderSiswaTable(); });
   $("siswa-body").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
@@ -896,6 +931,7 @@ function downloadImportTemplate() {
 function sortSiswa(key) {
   if (siswaSortKey === key) siswaSortDir *= -1;
   else { siswaSortKey = key; siswaSortDir = 1; }
+  siswaPage = 1;
   renderSiswaTable();
 }
 function updateSiswaSortIcons() {
@@ -933,11 +969,15 @@ async function renderSiswaTable() {
   if (!rows.length) {
     if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>';
     if (cards) cards.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">person_search</span><p class="mt-2 text-sm">Belum ada data siswa. Tambah siswa atau import CSV.</p></div>';
+    renderPagination("siswa-pagination", 1, siswaSize, 0, () => {});
     return;
   }
   const indices = rows.map(s => siswa.indexOf(s));
+  const totalPages = Math.max(1, Math.ceil(indices.length / siswaSize));
+  if (siswaPage > totalPages) siswaPage = totalPages;
+  const pageIndices = indices.slice((siswaPage - 1) * siswaSize, siswaPage * siswaSize);
   if (tbody) {
-    tbody.innerHTML = indices.map(origIdx => {
+    tbody.innerHTML = pageIndices.map(origIdx => {
       const s = siswa[origIdx];
       const statusCls = STATUS_CLS[s.Status]||"";
       const midStatus = (s.Status === "Mengerjakan" || s.Status === "Terkunci");
@@ -963,7 +1003,7 @@ async function renderSiswaTable() {
     }).join("");
   }
   if (cards) {
-    cards.innerHTML = indices.map(origIdx => {
+    cards.innerHTML = pageIndices.map(origIdx => {
       const s = siswa[origIdx];
       const statusCls = STATUS_CLS[s.Status]||"";
       const midStatus = (s.Status === "Mengerjakan" || s.Status === "Terkunci");
@@ -987,6 +1027,7 @@ async function renderSiswaTable() {
       </div>`;
     }).join("");
   }
+  renderPagination("siswa-pagination", siswaPage, siswaSize, indices.length, (p, s) => { if (s) siswaSize = s; siswaPage = p; renderSiswaTable(); });
 }
 
 async function openModalSiswa(idx) {
