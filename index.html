@@ -332,9 +332,9 @@ const api = {
 
     let paket = data.paket_soal || "";
     if (!paket) {
-      paket = Math.random() < 0.5 ? "A" : "B";
-      await SUPABASE_READY.from("siswa").update({ paket_soal: paket }).eq("nis", nis);
-      await logEvent(nis, "Login", "Paket " + paket + " ditetapkan");
+      const { data: pr, error: perr } = await SUPABASE_READY.rpc("assign_paket_if_empty", { nis_param: nis });
+      if (!perr && pr && pr.paket) paket = pr.paket;
+      else paket = Math.random() < 0.5 ? "A" : "B";
     }
     return {
       found: true,

@@ -89,20 +89,41 @@ alter table log_aktivitas enable row level security;
 drop policy if exists "anon_all_siswa"   on siswa;
 drop policy if exists "anon_all_jawaban" on jawaban;
 drop policy if exists "anon_all_log"     on log_aktivitas;
+drop policy if exists "anon_sel_siswa"   on siswa;
+drop policy if exists "anon_sel_jawaban" on jawaban;
+drop policy if exists "anon_ins_jawaban" on jawaban;
+drop policy if exists "anon_upd_jawaban" on jawaban;
+drop policy if exists "anon_sel_log"     on log_aktivitas;
+drop policy if exists "anon_ins_log"     on log_aktivitas;
 
-create policy "anon_all_siswa" on siswa for all
+-- Hanya SELECT untuk anon: semua modifikasi wajib lewat RPC (SECURITY DEFINER).
+create policy "anon_sel_siswa" on siswa for select
+  to anon using (true);
+
+create policy "anon_sel_jawaban" on jawaban for select
+  to anon using (true);
+-- INSERT + UPDATE untuk auto-save jawaban siswa (upsert).
+create policy "anon_ins_jawaban" on jawaban for insert
+  to anon with check (true);
+create policy "anon_upd_jawaban" on jawaban for update
   to anon using (true) with check (true);
 
-create policy "anon_all_jawaban" on jawaban for all
-  to anon using (true) with check (true);
-
-create policy "anon_all_log" on log_aktivitas for all
-  to anon using (true) with check (true);
+create policy "anon_sel_log" on log_aktivitas for select
+  to anon using (true);
+create policy "anon_ins_log" on log_aktivitas for insert
+  to anon with check (true);
 
 -- soal_* & config: sengaja TANPA policy untuk anon.
 -- Akses hanya lewat SECURITY DEFINER RPC di bawah.
 
 -- ======================== 3. RPC (SECURITY DEFINER) ========================
+
+-- Helper: validasi PIN guru (dipakai semua RPC guru)
+create or replace function _cek_pin(pin_param text) returns boolean
+language sql security definer as $$
+  select pin_param is not null and pin_param <> ''
+     and pin_param = (select value from config where key = 'ADMIN_PIN');
+$$;
 
 -- Helper: durasi dari config
 create or replace function _durasi_menit() returns integer
@@ -329,17 +350,24 @@ returns jsonb language sql security definer as $$
     from config where key in ('JUDUL_ULANGAN', 'DURASI_MENIT', 'ULANGAN_AKTIF');
 $$;
 
--- 3h. get_config_guru: config lengkap (dashboard guru)
-create or replace function get_config_guru()
+-- 3h. get_config_guru: config lengkap (dashboard guru). ADMIN_PIN hanya keluar
+--     jika pin_param benar (SECURITY DEFINER + _cek_pin).
+create or replace function get_config_guru(pin_param text)
 returns jsonb language sql security definer as $$
-  select coalesce(jsonb_object_agg(key, value), '{}'::jsonb) from config;
+  select case
+    when _cek_pin(pin_param) then coalesce(jsonb_object_agg(key, value), '{}'::jsonb)
+    else jsonb_build_object('error', 'unauthorized')
+  end from config;
 $$;
 
--- 3i. simpan_config_guru: upsert pasangan key/value
-create or replace function simpan_config_guru(data jsonb)
+-- 3i. simpan_config_guru: upsert pasangan key/value (wajib PIN guru)
+create or replace function simpan_config_guru(data jsonb, pin_param text)
 returns jsonb language plpgsql security definer as $$
 declare k text; v text;
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('error', 'unauthorized');
+  end if;
   for k, v in select * from jsonb_each_text(data) loop
     insert into config (key, value) values (k, v)
       on conflict (key) do update set value = excluded.value;
@@ -349,28 +377,35 @@ end;
 $$;
 
 -- 3j. get_soal_guru: soal LENGKAP dengan kunci (khusus dashboard guru)
-create or replace function get_soal_guru(paket_param text)
+create or replace function get_soal_guru(paket_param text, pin_param text)
 returns jsonb language sql security definer as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'No', no, 'Pertanyaan', pertanyaan,
-    'A', a, 'B', b, 'C', c, 'D', d, 'E', e,
-    'Kunci', kunci, 'Poin', poin
-  ) order by no), '[]'::jsonb)
+  select case
+    when _cek_pin(pin_param) then coalesce(jsonb_agg(jsonb_build_object(
+      'No', no, 'Pertanyaan', pertanyaan,
+      'A', a, 'B', b, 'C', c, 'D', d, 'E', e,
+      'Kunci', kunci, 'Poin', poin
+    ) order by no), '[]'::jsonb)
+    else jsonb_build_object('error', 'unauthorized')
+  end
   from (select * from soal_paket_a where paket_param <> 'B'
         union all
         select * from soal_paket_b where paket_param = 'B') t;
 $$;
 
--- 3k. simpan_soal_guru: update (idx>=0) atau insert soal baru
+-- 3k. simpan_soal_guru: update (idx>=0) atau insert soal baru (wajib PIN guru)
 create or replace function simpan_soal_guru(
   paket_param text, idx_param int default -1,
   pertanyaan_param text default '', a_param text default '', b_param text default '',
   c_param text default '', d_param text default '', e_param text default '',
-  kunci_param text default '', poin_param int default 10
+  kunci_param text default '', poin_param int default 10,
+  pin_param text default ''
 )
 returns jsonb language plpgsql security definer as $$
 declare v_id uuid; v_no int;
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
   if paket_param = 'B' then
     if idx_param >= 0 then
       select id into v_id from (
@@ -404,11 +439,14 @@ begin
 end;
 $$;
 
--- 3l. hapus_soal_guru: hapus soal berdasarkan urutan tampil (idx)
-create or replace function hapus_soal_guru(paket_param text, idx_param int)
+-- 3l. hapus_soal_guru: hapus soal berdasarkan urutan tampil (idx) (wajib PIN guru)
+create or replace function hapus_soal_guru(paket_param text, idx_param int, pin_param text default '')
 returns jsonb language plpgsql security definer as $$
 declare v_id uuid;
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
   if paket_param = 'B' then
     select id into v_id from (select id, row_number() over (order by no) rn from soal_paket_b) s
       where rn = idx_param + 1;
@@ -422,11 +460,14 @@ begin
 end;
 $$;
 
--- 3m. toggle_ulangan_guru: YA <-> TIDAK
-create or replace function toggle_ulangan_guru()
+-- 3m. toggle_ulangan_guru: YA <-> TIDAK (wajib PIN guru)
+create or replace function toggle_ulangan_guru(pin_param text)
 returns jsonb language plpgsql security definer as $$
 declare v text;
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
   select value into v from config where key = 'ULANGAN_AKTIF';
   v := case when v = 'YA' then 'TIDAK' else 'YA' end;
   insert into config (key, value) values ('ULANGAN_AKTIF', v)
@@ -435,11 +476,14 @@ begin
 end;
 $$;
 
--- 3n. generate_token_siswa: token baru untuk satu siswa
-create or replace function generate_token_siswa(nis_param text)
+-- 3n. generate_token_siswa: token baru untuk satu siswa (wajib PIN guru)
+create or replace function generate_token_siswa(nis_param text, pin_param text default '')
 returns jsonb language plpgsql security definer as $$
 declare v_token text := ''; v_chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; i int;
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
   for i in 1..6 loop
     v_token := v_token || substr(v_chars, floor(random() * length(v_chars))::int + 1, 1);
   end loop;
@@ -449,10 +493,13 @@ begin
 end;
 $$;
 
--- 3o. reset_all_data: kosongkan + seed ulang (dashboard guru)
-create or replace function reset_all_data()
+-- 3o. reset_all_data: kosongkan + seed ulang (dashboard guru, wajib PIN guru)
+create or replace function reset_all_data(pin_param text)
 returns jsonb language plpgsql security definer as $$
 begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
   delete from jawaban;
   delete from log_aktivitas;
   delete from siswa;
@@ -482,6 +529,64 @@ begin
 end;
 $$;
 
+-- 3p. simpan_siswa_guru: tambah/edit siswa (wajib PIN guru). Jika NIS berubah,
+--     jawaban & log ikut di-update (tidak orphan).
+create or replace function simpan_siswa_guru(
+  nis_param text, nama_param text, kelas_param text,
+  edit_nis_param text default '', pin_param text default ''
+) returns jsonb language plpgsql security definer as $$
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  if edit_nis_param <> '' then
+    if nis_param <> edit_nis_param and exists (select 1 from siswa where nis = nis_param) then
+      return jsonb_build_object('ok', false, 'reason', 'NIS sudah ada.');
+    end if;
+    update siswa set nis = nis_param, nama = nama_param, kelas = kelas_param where nis = edit_nis_param;
+    update jawaban set nis = nis_param where nis = edit_nis_param;
+    update log_aktivitas set nis = nis_param where nis = edit_nis_param;
+    return jsonb_build_object('ok', true);
+  end if;
+  if exists (select 1 from siswa where nis = nis_param) then
+    return jsonb_build_object('ok', false, 'reason', 'NIS sudah ada.');
+  end if;
+  insert into siswa (nis, nama, kelas, status) values (nis_param, nama_param, kelas_param, 'Belum Mulai');
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3q. hapus_siswa_guru: hapus siswa + jawaban + log (wajib PIN guru)
+create or replace function hapus_siswa_guru(nis_param text, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  delete from jawaban where nis = nis_param;
+  delete from log_aktivitas where nis = nis_param;
+  delete from siswa where nis = nis_param;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3r. assign_paket_if_empty: tetapkan paket A/B untuk siswa (dipanggil saat login).
+--     Idempoten — jika sudah punya paket, tidak diubah.
+create or replace function assign_paket_if_empty(nis_param text)
+returns jsonb language plpgsql security definer as $$
+declare v_siswa siswa%rowtype;
+begin
+  select * into v_siswa from siswa where nis = nis_param limit 1;
+  if not found then return jsonb_build_object('paket', ''); end if;
+  if v_siswa.paket_soal is null or v_siswa.paket_soal = '' then
+    v_siswa.paket_soal := case when random() < 0.5 then 'A' else 'B' end;
+    update siswa set paket_soal = v_siswa.paket_soal where id = v_siswa.id;
+    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_siswa.paket_soal || ' ditetapkan');
+  end if;
+  return jsonb_build_object('paket', v_siswa.paket_soal);
+end;
+$$;
+
 -- ======================== 4. STORAGE (gambar soal) ========================
 
 insert into storage.buckets (id, name, public)
@@ -498,13 +603,17 @@ create policy "anon_insert_gambar_soal" on storage.objects for insert
   to anon with check (bucket_id = 'gambar-soal');
 
 -- ======================== 5. SEED DATA ========================
+-- NOTE: default ADMIN_PIN & TOKEN_MASTER sengaja diacak.
+-- Setelah deploy PERTAMA, langsung ubah lewat guru.html -> Config.
+-- Untuk DB yang sudah pernah di-seed dengan nilai lama (bocor di history),
+-- jalankan UPDATE di bawah dengan nilai baru pilihanmu.
 
 insert into config (key, value) values
   ('JUDUL_ULANGAN', 'Ulangan Harian Matematika & IPA'),
   ('DURASI_MENIT',  '30'),
-  ('TOKEN_MASTER',  'ULANGAN2026'),
+  ('TOKEN_MASTER',  'QK7XW3Z9'),
   ('ULANGAN_AKTIF', 'YA'),
-  ('ADMIN_PIN',     '1234')
+  ('ADMIN_PIN',     '9B4R2M')
 on conflict (key) do nothing;
 
 insert into siswa (nis, nama, kelas, paket_soal, status) values

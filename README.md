@@ -52,8 +52,11 @@ python -m http.server 8000
 Buka `http://localhost:8000/index.html` (siswa) dan `http://localhost:8000/guru.html` (guru).
 
 **Data login demo:**
-- Guru: `guru.html` → PIN `1234`
-- Siswa: NIS `001234` / `001235` / `001236` → token master `ULANGAN2026`
+- Guru: `guru.html` → PIN `9B4R2M` (ubah setelah deploy via Config)
+- Siswa: NIS `001234` / `001235` / `001236` → token master `QK7XW3Z9` (ubah setelah deploy via Config)
+
+> **⚠️ Keamanan:** Seed default sudah diacak. Setelah deploy pertama, langsung ubah ADMIN_PIN & TOKEN_MASTER lewat Config di dashboard guru.
+> Untuk DB yang sudah pernah di-seed dengan nilai bocor (history publik), jalankan UPDATE langsung di Supabase SQL Editor. Lihat `supabase.sql` bagian seed untuk detail.
 
 ### 5. Deploy ke GitHub Pages
 1. Buat repo baru di GitHub (mis. `ulangan-app`)
@@ -105,7 +108,14 @@ Data lama (siswa, soal, jawaban, log) bisa dipindah manual:
 
 ## Keamanan
 
-- **Kunci jawaban** tidak pernah dikirim ke browser — siswa ambil soal via RPC `get_soal_siswa` yang strip kolom kunci; skor dihitung server-side di `submit_ulangan_siswa`
+- **Kunci jawaban** tidak pernah dikirim ke browser siswa — siswa ambil soal via RPC `get_soal_siswa` yang strip kolom kunci; skor dihitung server-side di `submit_ulangan_siswa`
 - **ADMIN_PIN** & **TOKEN_MASTER** tersimpan di tabel `config` yang diblokir dari akses langsung — cek PIN lewat RPC `cek_pin_admin`
-- RLS: `siswa`, `jawaban`, `log_aktivitas` terbuka (model auth NIS+token, sama seperti versi GAS). Batasi dari luar sekolah bila perlu di tingkat network/jaringan
+- **Semua RPC guru wajib `pin_param`** — `get_config_guru`, `simpan_config_guru`, `get_soal_guru`, `simpan_soal_guru`, `hapus_soal_guru`, `toggle_ulangan_guru`, `generate_token_siswa`, `reset_all_data`, `simpan_siswa_guru`, `hapus_siswa_guru` divalidasi server-side oleh `_cek_pin()`. Tanpa PIN → `error: unauthorized`
+- **RLS anon dibatasi**: `siswa`/`log_aktivitas` hanya SELECT (+INSERT untuk log event siswa), `jawaban` SELECT/INSERT/UPDATE untuk auto-save. Tidak ada UPDATE/DELETE langsung dari anon — semua modifikasi lewat RPC `SECURITY DEFINER`
+- **XSS**: semua data user di-escape (`esc()`) sebelum masuk `innerHTML` di dashboard guru
+- **Reset Data** butuh konfirmasi modal
 - Anti-cheat tab-switch bersifat best-effort (batasan browser), tetap perlu pengawasan guru di kelas
+
+### Batasan yang diketahui
+- Storage bucket `gambar-soal` terbuka untuk anon upload (dipakai guru upload gambar soal). Batas 2MB hanya client-side → rentan abuse kuota storage. Perbaikan penuh butuh RPC PIN-gated untuk upload.
+- Model auth NIS+token tanpa Supabase Auth: RLS tidak bisa memastikan "milik sendiri" — siapa pun yang tahu NIS bisa baca jawaban siswa lain. Batasi dari luar sekolah bila perlu di tingkat network/jaringan.
