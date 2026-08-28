@@ -500,11 +500,11 @@ begin
   if not _cek_pin(pin_param) then
     return jsonb_build_object('ok', false, 'error', 'unauthorized');
   end if;
-  delete from jawaban;
-  delete from log_aktivitas;
-  delete from siswa;
-  delete from soal_paket_a;
-  delete from soal_paket_b;
+  delete from jawaban where true;
+  delete from log_aktivitas where true;
+  delete from siswa where true;
+  delete from soal_paket_a where true;
+  delete from soal_paket_b where true;
 
   insert into siswa (nis, nama, kelas, paket_soal, status) values
     ('001234', 'Budi Santoso', 'XII IPA 1', 'A', 'Belum Mulai'),

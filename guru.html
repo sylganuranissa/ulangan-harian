@@ -674,7 +674,9 @@ async function renderDashboard() {
     });
     const tbody = $("dash-body");
     if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-text-muted">Tidak ada data.</td></tr>'; return; }
-    tbody.innerHTML = rows.map((s,i) => {
+    const indices = rows.map(s => siswa.indexOf(s));
+    tbody.innerHTML = indices.map(origIdx => {
+      const s = siswa[origIdx];
       const statusCls = STATUS_CLS[s.Status] || "";
       const skor = s.Skor!=null ? s.Skor : "-";
       return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
@@ -684,7 +686,7 @@ async function renderDashboard() {
         <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
         <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${esc(s.Status)}</span></td>
         <td class="px-4 py-3 text-center tnum font-semibold hidden sm:table-cell">${skor}</td>
-        <td class="px-4 py-3 text-center">${s.Token_Aktif ? '<button onclick="viewToken('+i+')" class="text-primary hover:text-tertiary transition-colors" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : '<span class="text-outline-variant">-</span>'}</td>
+        <td class="px-4 py-3 text-center">${s.Token_Aktif ? '<button onclick="viewToken('+origIdx+')" class="text-primary hover:text-tertiary transition-colors" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : '<span class="text-outline-variant">-</span>'}</td>
       </tr>`;
     }).join("");
   }
@@ -740,6 +742,19 @@ async function renderSiswa() {
       </div>
     </div>
     <input type="file" id="csv-import" accept=".csv,text/csv" class="hidden" onchange="importSiswaCSV(this)"/>
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+      <div class="relative flex-1 sm:flex-initial">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+        <input id="siswa-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-52 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all"/>
+      </div>
+      <select id="siswa-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <option value="">Semua Status</option>
+        <option value="Belum Mulai">Belum Mulai</option>
+        <option value="Mengerjakan">Mengerjakan</option>
+        <option value="Terkunci">Terkunci</option>
+        <option value="Selesai">Selesai</option>
+      </select>
+    </div>
     <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -756,6 +771,12 @@ async function renderSiswa() {
       </div>
     </div>`;
   $("main-area").innerHTML = html;
+  let siswaSearchTimer = null;
+  $("siswa-search").addEventListener("input", () => {
+    clearTimeout(siswaSearchTimer);
+    siswaSearchTimer = setTimeout(renderSiswaTable, 500);
+  });
+  $("siswa-filter").addEventListener("change", renderSiswaTable);
   await renderSiswaTable();
 }
 function parseCSV(text) {
@@ -796,9 +817,18 @@ function exportHasilCSV() {
 }
 async function renderSiswaTable() {
   const siswa = await call("getAllSiswa", []);
+  const q = ($("siswa-search").value||"").toLowerCase();
+  const filter = $("siswa-filter").value;
+  let rows = siswa.filter(s => {
+    if (filter && s.Status !== filter) return false;
+    if (q && !s.NIS.includes(q) && !s.Nama.toLowerCase().includes(q)) return false;
+    return true;
+  });
   const tbody = $("siswa-body");
-  if (!siswa.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>'; return; }
-  tbody.innerHTML = siswa.map((s,i) => {
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>'; return; }
+  const indices = rows.map(s => siswa.indexOf(s));
+  tbody.innerHTML = indices.map(origIdx => {
+    const s = siswa[origIdx];
     const statusCls = STATUS_CLS[s.Status]||"";
     return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
       <td class="px-4 py-3 font-semibold tnum">${esc(s.NIS)}</td>
@@ -808,9 +838,9 @@ async function renderSiswaTable() {
       <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${esc(s.Status)}</span></td>
       <td class="px-4 py-3">
         <div class="flex items-center justify-center gap-1">
-          <button onclick="openModalSiswa(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-          <button onclick="confirmGenToken(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[18px]">key</span></button>
-          <button onclick="confirmHapusSiswa(${i})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+          <button onclick="openModalSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+          <button onclick="confirmGenToken(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[18px]">key</span></button>
+          <button onclick="confirmHapusSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </div>
       </td>
     </tr>`;
