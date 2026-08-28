@@ -339,6 +339,30 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
   </div>
 </div>
 
+<!-- Modal tambah / rename paket -->
+<div id="modal-paket" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-sm max-h-[90dvh] overflow-y-auto fade-in">
+    <h3 id="modal-paket-title" class="font-display text-lg font-bold mb-5">Tambah Paket Baru</h3>
+    <div class="space-y-4">
+      <div>
+        <label for="mp-kode" class="block text-sm font-semibold mb-2">Kode Paket</label>
+        <input id="mp-kode" autocomplete="off" class="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-full text-sm font-bold tracking-widest focus:outline-none"/>
+        <p class="text-xs text-text-muted mt-1.5">Kode otomatis (A, B, C, ...) dan tidak bisa diubah.</p>
+      </div>
+      <div>
+        <label for="mp-nama" class="block text-sm font-semibold mb-2">Nama Paket</label>
+        <input id="mp-nama" autocomplete="off" placeholder="mis. Paket C / Matematika 2" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
+        <p id="err-paket" class="hidden text-sm text-error mt-2"></p>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button id="mp-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
+      <button id="mp-simpan" class="flex-1 bg-primary text-on-primary font-semibold rounded-full py-2.5 hover:bg-tertiary transition-colors shadow-soft">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    API LAYER - Supabase (GH Pages)
@@ -469,6 +493,46 @@ const API = {
     if (error) { console.error(error); return { ok: false }; }
     if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false }; }
     return { ok: true };
+  },
+
+  getPaketList: async () => {
+    if (!SUPABASE_READY) return [];
+    const { data, error } = await SUPABASE_READY.rpc("get_paket_list", { pin_param: adminPin });
+    if (error) { console.error(error); return []; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return []; }
+    return data || [];
+  },
+
+  simpanPaket: async (kode, nama, urutan) => {
+    if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
+    const { data, error } = await SUPABASE_READY.rpc("simpan_paket_guru", { kode_param: kode, nama_param: nama, urutan_param: urutan, pin_param: adminPin });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false, reason: "Sesi berakhir." }; }
+    return data || { ok: false, reason: "Gagal simpan paket." };
+  },
+
+  hapusPaket: async (kode) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { data, error } = await SUPABASE_READY.rpc("hapus_paket_guru", { kode_param: kode, pin_param: adminPin });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false }; }
+    return data || { ok: false };
+  },
+
+  moveSoalGuru: async (paket, idx, dir) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { data, error } = await SUPABASE_READY.rpc("move_soal_guru", { paket_param: paket, idx_param: idx, dir_param: dir, pin_param: adminPin });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false }; }
+    return data || { ok: false };
+  },
+
+  duplicateSoalGuru: async (paket, idx) => {
+    if (!SUPABASE_READY) return { ok: false };
+    const { data, error } = await SUPABASE_READY.rpc("duplicate_soal_guru", { paket_param: paket, idx_param: idx, pin_param: adminPin });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false }; }
+    return data || { ok: false };
   },
 
   getConfigAll: async () => {
@@ -1073,36 +1137,74 @@ function confirmHapusSiswa(idx) {
 
 /* --- KELOLA SOAL --- */
 let soalPaket = "A";
+let paketList = [];
 async function renderSoal() {
   $("main-area").innerHTML = '<div class="flex items-center justify-between mb-6 flex-wrap gap-3"><h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2></div><div class="skeleton h-64 rounded-2xl"></div>';
+  paketList = await call("getPaketList", []);
+  if (!paketList.length) paketList = [{ Kode: "A", Nama: "Paket A", JumlahSoal: 0 }];
+  if (!paketList.find(p => p.Kode === soalPaket)) soalPaket = paketList[0].Kode;
   let html = `
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-      <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2>
-      <div class="flex gap-2">
-        <div class="flex bg-secondary-container/60 rounded-full p-0.5">
-          <button onclick="switchSoalPaket('A')" id="spA" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket A</button>
-          <button onclick="switchSoalPaket('B')" id="spB" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket B</button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2>
+        <div class="flex bg-surface-container-high rounded-full p-0.5" id="paket-tabs">
+          ${paketList.map(p => `<button onclick="switchSoalPaket('${p.Kode}')" id="sp-${p.Kode}" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all" data-jml="${p.JumlahSoal}">${esc(p.Nama)}</button>`).join("")}
         </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openModalPaket()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all">
+          <span class="material-symbols-outlined text-[18px]">add</span> Paket
+        </button>
         <button onclick="openModalSoal()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary active:scale-[0.97] transition-all shadow-soft">
           <span class="material-symbols-outlined text-[18px]">add</span> Tambah
         </button>
       </div>
     </div>
+    <div id="soal-toolbar" class="flex flex-wrap items-center gap-2 mb-4"></div>
     <div id="soal-list"></div>`;
   $("main-area").innerHTML = html;
   switchSoalPaket(soalPaket);
 }
 async function switchSoalPaket(p) {
   soalPaket = p;
-  $("spA").className = p==="A" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
-  $("spB").className = p==="B" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
+  document.querySelectorAll("#paket-tabs button").forEach(b => {
+    const sel = b.id === "sp-" + p;
+    b.className = sel ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-secondary-container/50";
+  });
+  $("soal-toolbar").innerHTML = `
+    <div class="flex items-center gap-2 text-sm text-on-surface-variant font-semibold">
+      <span class="material-symbols-outlined text-[18px]">quiz</span>
+      <span id="soal-total-poin">0</span> poin total
+    </div>
+    <div class="flex items-center gap-2 ml-auto">
+      <button onclick="openModalPaket(true)" class="flex items-center gap-1.5 bg-secondary-container text-primary font-semibold rounded-full px-3 py-1.5 text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all">
+        <span class="material-symbols-outlined text-[16px]">edit</span> Ganti Nama
+      </button>
+      <button onclick="handleHapusPaket()" class="flex items-center gap-1.5 bg-error-container text-on-error-container font-semibold rounded-full px-3 py-1.5 text-xs hover:opacity-90 active:scale-[0.97] transition-all">
+        <span class="material-symbols-outlined text-[16px]">delete</span> Hapus Paket
+      </button>
+      <button onclick="downloadSoalTemplate()" class="flex items-center gap-1.5 bg-secondary-container text-primary font-semibold rounded-full px-3 py-1.5 text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all">
+        <span class="material-symbols-outlined text-[16px]">description</span> Template
+      </button>
+      <button onclick="document.getElementById('soal-import').click()" class="flex items-center gap-1.5 bg-secondary-container text-primary font-semibold rounded-full px-3 py-1.5 text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all">
+        <span class="material-symbols-outlined text-[16px]">upload_file</span> Import CSV
+      </button>
+      <button onclick="exportSoalCSV()" class="flex items-center gap-1.5 bg-secondary-container text-primary font-semibold rounded-full px-3 py-1.5 text-xs hover:bg-primary-fixed active:scale-[0.97] transition-all">
+        <span class="material-symbols-outlined text-[16px]">download</span> Export CSV
+      </button>
+    </div>
+    <input type="file" id="soal-import" accept=".csv,text/csv" class="hidden" onchange="importSoalCSV(this)"/>`;
+  const tab = paketList.find(p => p.Kode === soalPaket);
+  if (tab) $("soal-total-poin").textContent = tab.JumlahSoal ? "?" : "0";
   $("soal-list").innerHTML = '<div class="skeleton h-24 rounded-2xl mb-3"></div><div class="skeleton h-24 rounded-2xl mb-3"></div>';
   await renderSoalList();
 }
 async function renderSoalList() {
   const soal = await call("getSoalByPaket", [soalPaket]);
   const el = $("soal-list");
-  if (!soal.length) { el.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">quiz</span><p class="mt-2 text-sm">Belum ada soal untuk Paket '+soalPaket+'. Tekan Tambah untuk membuat soal pertama.</p></div>'; return; }
+  if (!soal.length) { el.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">quiz</span><p class="mt-2 text-sm">Belum ada soal. Tekan Tambah untuk membuat soal pertama.</p></div>'; return; }
+  const totalPoin = soal.reduce((s, q) => s + (q.Poin || 0), 0);
+  $("soal-total-poin").textContent = totalPoin;
   el.innerHTML = soal.map((q,i) => `
     <div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-5 mb-3">
       <div class="flex items-start gap-3 mb-3">
@@ -1114,15 +1216,118 @@ async function renderSoalList() {
         ${["A","B","C","D","E"].map(l => `<div class="text-sm px-3 py-2 rounded-xl border ${q.Kunci===l?'border-primary bg-primary-fixed/40 text-primary font-semibold':'border-border-subtle text-on-surface-variant'}">${l}. ${sanitizeHTML(q[l])}</div>`).join("")}
       </div>
       <div class="flex gap-1 justify-end">
-        <button onclick="openModalSoal(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-        <button onclick="confirmHapusSoal(${i})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        <button onclick="handleMoveSoal(${i},-1)" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Naik"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+        <button onclick="handleMoveSoal(${i},1)" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Turun"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+        <button onclick="handleDuplicateSoal(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Duplikat"><span class="material-symbols-outlined text-[18px]">content_copy</span></button>
+        <button onclick="openModalSoal(${i})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+        <button onclick="confirmHapusSoal(${i})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
       </div>
     </div>`).join("");
+}
+async function handleMoveSoal(idx, dir) {
+  const res = await call("moveSoalGuru", [soalPaket, idx, dir]);
+  if (!res.ok) { toast(res.reason || "Gagal memindahkan soal", "error"); return; }
+  await renderSoalList();
+}
+async function handleDuplicateSoal(idx) {
+  const res = await call("duplicateSoalGuru", [soalPaket, idx]);
+  if (!res.ok) { toast(res.reason || "Gagal menduplikasi soal", "error"); return; }
+  await renderSoalList();
+  toast("Soal diduplikasi", "check_circle");
+}
+function downloadSoalTemplate() {
+  const csv = [["No","Pertanyaan","A","B","C","D","E","Kunci","Poin"],["1","Contoh pertanyaan","Opsi A","Opsi B","Opsi C","Opsi D","Opsi E","A","10"]].map(r => r.join(",")).join("\r\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "template-soal.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+async function importSoalCSV(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const text = await file.text();
+  let rows = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => line.split(",").map(f => f.trim().replace(/^"|"$/g, "").replace(/""/g, '"')));
+  if (!rows.length) { toast("CSV kosong", "error"); return; }
+  if (rows[0][0].toLowerCase() === "no") rows = rows.slice(1);
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    if (r.length < 8) { fail++; continue; }
+    const [no, pertanyaan, a, b, c, d, e, kunci, poin] = r;
+    if (!["A","B","C","D","E"].includes(kunci.toUpperCase())) { fail++; continue; }
+    const data = { Pertanyaan: pertanyaan, A: a, B: b, C: c, D: d, E: e, Kunci: kunci.toUpperCase(), Poin: parseInt(poin,10) || 10 };
+    const res = await call("simpanSoalGuru", [soalPaket, undefined, data]);
+    if (res.ok) ok++; else fail++;
+  }
+  toast("Import selesai: " + ok + " sukses, " + fail + " gagal", fail ? "error" : "check_circle");
+  input.value = "";
+  await renderSoalList();
+}
+function exportSoalCSV() {
+  const rows = [["No","Pertanyaan","A","B","C","D","E","Kunci","Poin"]];
+  call("getSoalByPaket", [soalPaket]).then(soal => {
+    soal.forEach(q => rows.push([q.No, q.Pertanyaan, q.A, q.B, q.C, q.D, q.E, q.Kunci, q.Poin]));
+    const csv = rows.map(r => r.map(f => '"' + String(f).replace(/"/g, '""') + '"').join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "soal-" + soalPaket + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Soal diekspor", "check_circle");
+  });
+}
+function openModalPaket(isEdit) {
+  setErr($("err-paket"));
+  if (isEdit) {
+    const tab = paketList.find(p => p.Kode === soalPaket);
+    $("mp-kode").value = tab ? tab.Kode : soalPaket;
+    $("mp-kode").disabled = true;
+    $("mp-nama").value = tab ? tab.Nama : "";
+    $("modal-paket-title").textContent = "Ganti Nama Paket";
+  } else {
+    const next = String.fromCharCode(65 + paketList.length);
+    $("mp-kode").value = next;
+    $("mp-kode").disabled = true;
+    $("mp-nama").value = "Paket " + next;
+    $("modal-paket-title").textContent = "Tambah Paket Baru";
+  }
+  $("modal-paket").classList.remove("hidden"); $("modal-paket").classList.add("flex");
+}
+async function simpanPaketModal() {
+  const nama = $("mp-nama").value.trim();
+  const kode = $("mp-kode").value.trim().toUpperCase();
+  setErr($("err-paket"));
+  if (!nama) { setErr($("err-paket"), "Nama paket wajib diisi."); return; }
+  const existing = paketList.find(p => p.Kode === kode);
+  const urutan = existing ? existing.Urutan : (paketList.length + 1);
+  const res = await call("simpanPaket", [kode, nama, urutan]);
+  if (!res.ok) { setErr($("err-paket"), res.reason || "Gagal simpan paket."); return; }
+  $("modal-paket").classList.add("hidden"); $("modal-paket").classList.remove("flex");
+  toast("Paket disimpan", "check_circle");
+  await renderSoal();
+}
+function handleHapusPaket() {
+  const tab = paketList.find(p => p.Kode === soalPaket);
+  if (!tab) return;
+  if (paketList.length <= 1) { toast("Tidak bisa hapus — minimal 1 paket.", "error"); return; }
+  if (tab.JumlahSoal > 0) {
+    if (!confirm("Paket " + tab.Nama + " punya " + tab.JumlahSoal + " soal. Semua soal akan ikut terhapus. Lanjut?")) return;
+  } else {
+    if (!confirm("Hapus paket " + tab.Nama + "?")) return;
+  }
+  call("hapusPaket", [soalPaket]).then(async res => {
+    if (!res.ok) { toast(res.reason || "Gagal hapus paket", "error"); return; }
+    toast("Paket dihapus", "check_circle");
+    soalPaket = "";
+    await renderSoal();
+  });
 }
 async function openModalSoal(idx) {
   var soal = await call("getSoalByPaket", [soalPaket]);
   var isEdit = idx !== undefined && idx >= 0;
-  $("modal-soal-title").textContent = isEdit ? "Edit Soal" : "Tambah Soal (Paket " + soalPaket + ")";
+  $("modal-soal-title").textContent = isEdit ? "Edit Soal" : "Tambah Soal (" + (paketList.find(p=>p.Kode===soalPaket)?.Nama || soalPaket) + ")";
   $("modal-soal-idx").value = isEdit ? idx : -1;
   for (var j = 0; j < FIELD_MAP.length; j++) clearImgState(FIELD_MAP[j].key);
 
@@ -1247,6 +1452,7 @@ async function simpanSoal() {
   var d = $("mq-d").value.trim(), e = $("mq-e").value.trim();
   var kunci = $("mq-kunci").value, poin = parseInt($("mq-poin").value, 10) || 10;
   if (!pertanyaan || !a || !b || !c || !d) { setErr($("err-soal"), "Semua field wajib diisi."); return; }
+  if (!["A","B","C","D","E"].includes(kunci)) { setErr($("err-soal"), "Kunci jawaban harus A, B, C, D, atau E."); return; }
 
   var idx = parseInt($("modal-soal-idx").value, 10);
   var editIdx = idx >= 0 ? idx : undefined;
@@ -1606,6 +1812,9 @@ $("mhp-batal").addEventListener("click", () => { $("modal-hapus").classList.add(
 $("mhp-hapus").addEventListener("click", handleHapus);
 $("mrst-batal").addEventListener("click", () => { $("modal-reset").classList.add("hidden"); $("modal-reset").classList.remove("flex"); });
 $("mrst-reset").addEventListener("click", doResetData);
+$("mp-batal").addEventListener("click", () => { $("modal-paket").classList.add("hidden"); $("modal-paket").classList.remove("flex"); });
+$("mp-simpan").addEventListener("click", simpanPaketModal);
+$("mp-nama").addEventListener("keydown", e => { if (e.key === "Enter") simpanPaketModal(); });
 
 // Image upload preview listeners (hybrid: upload + URL)
 var IMG_FIELDS = ["pertanyaan","a","b","c","d","e"];

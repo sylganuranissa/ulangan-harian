@@ -60,6 +60,48 @@ create table if not exists soal_paket_b (
   poin       integer not null default 10
 );
 
+-- ============================================================
+-- Tabel dinamis paket + soal (menggantikan soal_paket_a/b)
+-- ============================================================
+
+create table if not exists paket (
+  kode   text primary key,
+  nama   text not null default '',
+  urutan int not null default 0
+);
+
+create table if not exists soal (
+  id         uuid primary key default gen_random_uuid(),
+  paket      text not null references paket(kode) on delete cascade,
+  no         integer not null,
+  pertanyaan text not null default '',
+  a          text not null default '',
+  b          text not null default '',
+  c          text not null default '',
+  d          text not null default '',
+  e          text not null default '',
+  kunci      text not null default '',
+  poin       integer not null default 10,
+  unique (paket, no)
+);
+
+-- Seed paket awal + migrasi data dari tabel lama (aman dijalankan ulang).
+insert into paket (kode, nama, urutan) values
+  ('A', 'Paket A', 1),
+  ('B', 'Paket B', 2)
+on conflict (kode) do nothing;
+
+insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin)
+select 'A', no, pertanyaan, a, b, c, d, e, kunci, poin from soal_paket_a
+on conflict (paket, no) do nothing;
+
+insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin)
+select 'B', no, pertanyaan, a, b, c, d, e, kunci, poin from soal_paket_b
+on conflict (paket, no) do nothing;
+
+-- Tabel lama dibiarkan sebagai fallback. Setelah dipastikan migrasi sukses,
+-- bisa di-drop: drop table soal_paket_a; drop table soal_paket_b;
+
 create table if not exists jawaban (
   id        uuid primary key default gen_random_uuid(),
   nis       text not null,
@@ -181,7 +223,8 @@ begin
 
   v_paket := v_siswa.paket_soal;
   if v_paket is null or v_paket = '' then
-    v_paket := case when random() < 0.5 then 'A' else 'B' end;
+    select kode into v_paket from paket order by random() limit 1;
+    v_paket := coalesce(v_paket, 'A');
     update siswa set paket_soal = v_paket where id = v_siswa.id;
     insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_paket || ' ditetapkan');
   end if;
@@ -193,21 +236,12 @@ begin
     update siswa set acak_seed = v_seed where id = v_siswa.id;
   end if;
 
-  if v_paket = 'B' then
-    select coalesce(jsonb_agg(
-      jsonb_build_object('No', no, 'Pertanyaan', pertanyaan, 'Poin', poin)
-      || case when v_seed is null then jsonb_build_object('A', a, 'B', b, 'C', c, 'D', d, 'E', e)
-              else _shuffle_options(v_seed, no, a, b, c, d, e) end
-      order by (case when v_seed is null then lpad(no::text, 8, '0') else md5(no::text || v_seed::text) end)
-    ), '[]'::jsonb) into v_soal from soal_paket_b;
-  else
-    select coalesce(jsonb_agg(
-      jsonb_build_object('No', no, 'Pertanyaan', pertanyaan, 'Poin', poin)
-      || case when v_seed is null then jsonb_build_object('A', a, 'B', b, 'C', c, 'D', d, 'E', e)
-              else _shuffle_options(v_seed, no, a, b, c, d, e) end
-      order by (case when v_seed is null then lpad(no::text, 8, '0') else md5(no::text || v_seed::text) end)
-    ), '[]'::jsonb) into v_soal from soal_paket_a;
-  end if;
+  select coalesce(jsonb_agg(
+    jsonb_build_object('No', no, 'Pertanyaan', pertanyaan, 'Poin', poin)
+    || case when v_seed is null then jsonb_build_object('A', a, 'B', b, 'C', c, 'D', d, 'E', e)
+            else _shuffle_options(v_seed, no, a, b, c, d, e) end
+    order by (case when v_seed is null then lpad(no::text, 8, '0') else md5(no::text || v_seed::text) end)
+  ), '[]'::jsonb) into v_soal from soal where paket = v_paket;
 
   select coalesce(jsonb_agg(jsonb_build_object('No', no_soal, 'Jawaban', jawaban) order by no_soal),
                   '[]'::jsonb)
@@ -296,37 +330,20 @@ begin
   v_paket := coalesce(nullif(v_siswa.paket_soal, ''), 'A');
   v_seed := v_siswa.acak_seed;
 
-  if v_paket = 'B' then
-    for v_row in select * from soal_paket_b loop
-      v_total := v_total + v_row.poin;  v_count := v_count + 1;
-      select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
-      if v_jwb is not null then
-        if v_seed is null then
-          v_orig := upper(v_jwb);
-        else
-          v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb);
-        end if;
-        if v_orig = v_row.kunci then
-          v_earned := v_earned + v_row.poin;
-        end if;
+  for v_row in select * from soal where paket = v_paket loop
+    v_total := v_total + v_row.poin;  v_count := v_count + 1;
+    select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
+    if v_jwb is not null then
+      if v_seed is null then
+        v_orig := upper(v_jwb);
+      else
+        v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb);
       end if;
-    end loop;
-  else
-    for v_row in select * from soal_paket_a loop
-      v_total := v_total + v_row.poin;  v_count := v_count + 1;
-      select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
-      if v_jwb is not null then
-        if v_seed is null then
-          v_orig := upper(v_jwb);
-        else
-          v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb);
-        end if;
-        if v_orig = v_row.kunci then
-          v_earned := v_earned + v_row.poin;
-        end if;
+      if v_orig = v_row.kunci then
+        v_earned := v_earned + v_row.poin;
       end if;
-    end loop;
-  end if;
+    end if;
+  end loop;
 
   if v_total > 0 then
     v_score := round((v_earned::numeric / v_total) * 100)::integer;
@@ -444,9 +461,7 @@ returns jsonb language sql security definer as $$
     ) order by no), '[]'::jsonb)
     else jsonb_build_object('error', 'unauthorized')
   end
-  from (select * from soal_paket_a where paket_param <> 'B'
-        union all
-        select * from soal_paket_b where paket_param = 'B') t;
+  from soal where paket = paket_param;
 $$;
 
 -- 3k. simpan_soal_guru: update (idx>=0) atau insert soal baru (wajib PIN guru)
@@ -463,34 +478,18 @@ begin
   if not _cek_pin(pin_param) then
     return jsonb_build_object('ok', false, 'error', 'unauthorized');
   end if;
-  if paket_param = 'B' then
-    if idx_param >= 0 then
-      select id into v_id from (
-        select id, row_number() over (order by no) rn from soal_paket_b) s
-        where rn = idx_param + 1;
-      if v_id is null then return jsonb_build_object('ok', false, 'reason', 'Soal tidak ditemukan.'); end if;
-      update soal_paket_b set pertanyaan = pertanyaan_param, a = a_param, b = b_param,
-        c = c_param, d = d_param, e = e_param, kunci = kunci_param, poin = poin_param
-        where id = v_id;
-    else
-      select coalesce(max(no), 0) + 1 into v_no from soal_paket_b;
-      insert into soal_paket_b (no, pertanyaan, a, b, c, d, e, kunci, poin)
-        values (v_no, pertanyaan_param, a_param, b_param, c_param, d_param, e_param, kunci_param, poin_param);
-    end if;
+  if idx_param >= 0 then
+    select id into v_id from (
+      select id, row_number() over (order by no) rn from soal where paket = paket_param) s
+      where rn = idx_param + 1;
+    if v_id is null then return jsonb_build_object('ok', false, 'reason', 'Soal tidak ditemukan.'); end if;
+    update soal set pertanyaan = pertanyaan_param, a = a_param, b = b_param,
+      c = c_param, d = d_param, e = e_param, kunci = kunci_param, poin = poin_param
+      where id = v_id;
   else
-    if idx_param >= 0 then
-      select id into v_id from (
-        select id, row_number() over (order by no) rn from soal_paket_a) s
-        where rn = idx_param + 1;
-      if v_id is null then return jsonb_build_object('ok', false, 'reason', 'Soal tidak ditemukan.'); end if;
-      update soal_paket_a set pertanyaan = pertanyaan_param, a = a_param, b = b_param,
-        c = c_param, d = d_param, e = e_param, kunci = kunci_param, poin = poin_param
-        where id = v_id;
-    else
-      select coalesce(max(no), 0) + 1 into v_no from soal_paket_a;
-      insert into soal_paket_a (no, pertanyaan, a, b, c, d, e, kunci, poin)
-        values (v_no, pertanyaan_param, a_param, b_param, c_param, d_param, e_param, kunci_param, poin_param);
-    end if;
+    select coalesce(max(no), 0) + 1 into v_no from soal where paket = paket_param;
+    insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin)
+      values (paket_param, v_no, pertanyaan_param, a_param, b_param, c_param, d_param, e_param, kunci_param, poin_param);
   end if;
   return jsonb_build_object('ok', true);
 end;
@@ -504,15 +503,9 @@ begin
   if not _cek_pin(pin_param) then
     return jsonb_build_object('ok', false, 'error', 'unauthorized');
   end if;
-  if paket_param = 'B' then
-    select id into v_id from (select id, row_number() over (order by no) rn from soal_paket_b) s
-      where rn = idx_param + 1;
-    delete from soal_paket_b where id = v_id;
-  else
-    select id into v_id from (select id, row_number() over (order by no) rn from soal_paket_a) s
-      where rn = idx_param + 1;
-    delete from soal_paket_a where id = v_id;
-  end if;
+  select id into v_id from (select id, row_number() over (order by no) rn from soal where paket = paket_param) s
+    where rn = idx_param + 1;
+  delete from soal where id = v_id;
   return jsonb_build_object('ok', v_id is not null);
 end;
 $$;
@@ -560,27 +553,29 @@ begin
   delete from jawaban where true;
   delete from log_aktivitas where true;
   delete from siswa where true;
-  delete from soal_paket_a where true;
-  delete from soal_paket_b where true;
+  delete from soal where true;
+  delete from paket where true;
+
+  insert into paket (kode, nama, urutan) values
+    ('A', 'Paket A', 1),
+    ('B', 'Paket B', 2);
 
   insert into siswa (nis, nama, kelas, paket_soal, status) values
     ('001234', 'Budi Santoso', 'XII IPA 1', 'A', 'Belum Mulai'),
     ('001235', 'Siti Aminah', 'XII IPA 1', 'B', 'Belum Mulai'),
     ('001236', 'Andi Prasetyo', 'XII IPA 2', '', 'Belum Mulai');
 
-  insert into soal_paket_a (no, pertanyaan, a, b, c, d, e, kunci, poin) values
-    (1, 'Hasil dari 12 x 8 adalah ...', '86', '96', '106', '116', '126', 'B', 10),
-    (2, 'Pecahan 3/4 jika diubah ke bentuk desimal adalah ...', '0,25', '0,50', '0,75', '0,80', '1,25', 'C', 10),
-    (3, 'Keliling persegi dengan panjang sisi 7 cm adalah ...', '21 cm', '28 cm', '35 cm', '49 cm', '56 cm', 'B', 10),
-    (4, 'Bilangan prima antara 10 dan 20 adalah ...', '11, 13, 17, 19', '11, 12, 13', '13, 15, 17', '11, 13, 15', '12, 14, 16, 18', 'A', 10),
-    (5, 'Hasil dari 144 / 12 adalah ...', '10', '11', '12', '14', '16', 'C', 10);
-
-  insert into soal_paket_b (no, pertanyaan, a, b, c, d, e, kunci, poin) values
-    (1, 'Proses tumbuhan membuat makanannya sendiri disebut ...', 'Respirasi', 'Fotosintesis', 'Transpirasi', 'Evaporasi', 'Kondensasi', 'B', 10),
-    (2, 'Organ pernapasan utama pada manusia adalah ...', 'Jantung', 'Ginjal', 'Paru-paru', 'Hati', 'Lambung', 'C', 10),
-    (3, 'Benda yang dapat ditarik oleh magnet disebut benda ...', 'Magnetis', 'Konduktor', 'Isolator', 'Transparan', 'Luminifer', 'A', 10),
-    (4, 'Perubahan wujud dari cair menjadi gas disebut ...', 'Membeku', 'Menguap', 'Mengembun', 'Menyublim', 'Mencair', 'B', 10),
-    (5, 'Planet yang dikenal sebagai planet merah adalah ...', 'Venus', 'Jupiter', 'Mars', 'Saturnus', 'Neptunus', 'C', 10);
+  insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin) values
+    ('A', 1, 'Hasil dari 12 x 8 adalah ...', '86', '96', '106', '116', '126', 'B', 10),
+    ('A', 2, 'Pecahan 3/4 jika diubah ke bentuk desimal adalah ...', '0,25', '0,50', '0,75', '0,80', '1,25', 'C', 10),
+    ('A', 3, 'Keliling persegi dengan panjang sisi 7 cm adalah ...', '21 cm', '28 cm', '35 cm', '49 cm', '56 cm', 'B', 10),
+    ('A', 4, 'Bilangan prima antara 10 dan 20 adalah ...', '11, 13, 17, 19', '11, 12, 13', '13, 15, 17', '11, 13, 15', '12, 14, 16, 18', 'A', 10),
+    ('A', 5, 'Hasil dari 144 / 12 adalah ...', '10', '11', '12', '14', '16', 'C', 10),
+    ('B', 1, 'Proses tumbuhan membuat makanannya sendiri disebut ...', 'Respirasi', 'Fotosintesis', 'Transpirasi', 'Evaporasi', 'Kondensasi', 'B', 10),
+    ('B', 2, 'Organ pernapasan utama pada manusia adalah ...', 'Jantung', 'Ginjal', 'Paru-paru', 'Hati', 'Lambung', 'C', 10),
+    ('B', 3, 'Benda yang dapat ditarik oleh magnet disebut benda ...', 'Magnetis', 'Konduktor', 'Isolator', 'Transparan', 'Luminifer', 'A', 10),
+    ('B', 4, 'Perubahan wujud dari cair menjadi gas disebut ...', 'Membeku', 'Menguap', 'Mengembun', 'Menyublim', 'Mencair', 'B', 10),
+    ('B', 5, 'Planet yang dikenal sebagai planet merah adalah ...', 'Venus', 'Jupiter', 'Mars', 'Saturnus', 'Neptunus', 'C', 10);
 
   return jsonb_build_object('ok', true);
 end;
@@ -627,7 +622,7 @@ begin
 end;
 $$;
 
--- 3r. assign_paket_if_empty: tetapkan paket A/B untuk siswa (dipanggil saat login).
+-- 3r. assign_paket_if_empty: tetapkan paket acak untuk siswa (dipanggil saat login).
 --     Idempoten — jika sudah punya paket, tidak diubah.
 create or replace function assign_paket_if_empty(nis_param text)
 returns jsonb language plpgsql security definer as $$
@@ -636,7 +631,9 @@ begin
   select * into v_siswa from siswa where nis = nis_param limit 1;
   if not found then return jsonb_build_object('paket', ''); end if;
   if v_siswa.paket_soal is null or v_siswa.paket_soal = '' then
-    v_siswa.paket_soal := case when random() < 0.5 then 'A' else 'B' end;
+    select kode into v_siswa.paket_soal from paket
+      order by random() limit 1;
+    v_siswa.paket_soal := coalesce(v_siswa.paket_soal, 'A');
     update siswa set paket_soal = v_siswa.paket_soal, acak_seed = floor(random() * 1000000)::int
       where id = v_siswa.id;
     insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_siswa.paket_soal || ' ditetapkan');
@@ -668,6 +665,118 @@ begin
       where nis = nis_param;
   end if;
   insert into log_aktivitas (nis, event, detail) values (nis_param, 'Ubah_Status', 'Status -> ' || status_param);
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3t. _next_paket_kode: kode huruf otomatis berikutnya (A, B, C, ... Z)
+create or replace function _next_paket_kode()
+returns text language sql as $$
+  select chr(ascii('A') + count(*))
+  from paket where kode ~ '^[A-Z]$'
+$$;
+
+-- 3u. get_paket_list: daftar paket + jumlah soal (dashboard guru, wajib PIN)
+create or replace function get_paket_list(pin_param text)
+returns jsonb language sql security definer as $$
+  select case
+    when _cek_pin(pin_param) then
+      coalesce(jsonb_agg(jsonb_build_object(
+        'Kode', p.kode, 'Nama', p.nama, 'Urutan', p.urutan, 'JumlahSoal', s.jml
+      ) order by p.urutan), '[]'::jsonb)
+    else jsonb_build_object('error', 'unauthorized')
+  end
+  from paket p
+  left join (select paket, count(*) as jml from soal group by paket) s on s.paket = p.kode;
+$$;
+
+-- 3v. simpan_paket_guru: tambah/edit paket (wajib PIN guru)
+create or replace function simpan_paket_guru(kode_param text, nama_param text, urutan_param int, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  if kode_param is null or kode_param = '' then
+    return jsonb_build_object('ok', false, 'reason', 'Kode paket wajib diisi.');
+  end if;
+  if not (kode_param ~ '^[A-Z]$') then
+    return jsonb_build_object('ok', false, 'reason', 'Kode paket harus satu huruf kapital (A-Z).');
+  end if;
+  insert into paket (kode, nama, urutan) values (kode_param, coalesce(nama_param, kode_param), coalesce(urutan_param, 99))
+    on conflict (kode) do update set nama = excluded.nama, urutan = excluded.urutan;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3w. hapus_paket_guru: hapus paket + semua soalnya (wajib PIN guru).
+--     Diblokir jika masih ada siswa yang ter-assign ke paket tersebut.
+create or replace function hapus_paket_guru(kode_param text, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  if exists (select 1 from siswa where paket_soal = kode_param) then
+    return jsonb_build_object('ok', false, 'reason', 'Paket masih dipakai siswa. Ubah status siswa ke Belum Mulai (atau hapus siswa) dulu.');
+  end if;
+  if not exists (select 1 from paket where kode = kode_param) then
+    return jsonb_build_object('ok', false, 'reason', 'Paket tidak ditemukan.');
+  end if;
+  delete from soal where paket = kode_param;
+  delete from paket where kode = kode_param;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3x. move_soal_guru: pindahkan urutan soal naik (-1) / turun (+1) (wajib PIN guru)
+create or replace function move_soal_guru(paket_param text, idx_param int, dir_param int, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+declare
+  v_id_a uuid; v_id_b uuid; v_no_a int; v_no_b int;
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  select id, no into v_id_a, v_no_a from (
+    select id, no, row_number() over (order by no) rn from soal where paket = paket_param) s
+    where rn = idx_param + 1;
+  if v_id_a is null then return jsonb_build_object('ok', false, 'reason', 'Soal tidak ditemukan.'); end if;
+
+  if dir_param < 0 then
+    select id, no into v_id_b, v_no_b from (
+      select id, no, row_number() over (order by no) rn from soal where paket = paket_param) s
+      where rn = idx_param;
+    if v_id_b is null then return jsonb_build_object('ok', false, 'reason', 'Sudah di posisi paling atas.'); end if;
+  else
+    select id, no into v_id_b, v_no_b from (
+      select id, no, row_number() over (order by no) rn from soal where paket = paket_param) s
+      where rn = idx_param + 2;
+    if v_id_b is null then return jsonb_build_object('ok', false, 'reason', 'Sudah di posisi paling bawah.'); end if;
+  end if;
+
+  update soal set no = -1 where id = v_id_a;
+  update soal set no = v_no_a where id = v_id_b;
+  update soal set no = v_no_b where id = v_id_a;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3y. duplicate_soal_guru: salin soal ke posisi akhir (wajib PIN guru)
+create or replace function duplicate_soal_guru(paket_param text, idx_param int, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+declare
+  v_q soal%rowtype; v_no int;
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  select s.* into v_q from (select *, row_number() over (order by no) rn from soal where paket = paket_param) s
+    where s.rn = idx_param + 1;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'Soal tidak ditemukan.'); end if;
+  select coalesce(max(no), 0) + 1 into v_no from soal where paket = paket_param;
+  insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin)
+    values (paket_param, v_no, v_q.pertanyaan, v_q.a, v_q.b, v_q.c, v_q.d, v_q.e, v_q.kunci, v_q.poin);
   return jsonb_build_object('ok', true);
 end;
 $$;
@@ -707,18 +816,20 @@ insert into siswa (nis, nama, kelas, paket_soal, status) values
   ('001236', 'Andi Prasetyo', 'XII IPA 2', '',  'Belum Mulai')
 on conflict (nis) do nothing;
 
-insert into soal_paket_a (no, pertanyaan, a, b, c, d, e, kunci, poin) values
-  (1, 'Hasil dari 12 x 8 adalah ...', '86', '96', '106', '116', '126', 'B', 10),
-  (2, 'Pecahan 3/4 jika diubah ke bentuk desimal adalah ...', '0,25', '0,50', '0,75', '0,80', '1,25', 'C', 10),
-  (3, 'Keliling persegi dengan panjang sisi 7 cm adalah ...', '21 cm', '28 cm', '35 cm', '49 cm', '56 cm', 'B', 10),
-  (4, 'Bilangan prima antara 10 dan 20 adalah ...', '11, 13, 17, 19', '11, 12, 13', '13, 15, 17', '11, 13, 15', '12, 14, 16, 18', 'A', 10),
-  (5, 'Hasil dari 144 / 12 adalah ...', '10', '11', '12', '14', '16', 'C', 10)
-on conflict (no) do nothing;
+insert into paket (kode, nama, urutan) values
+  ('A', 'Paket A', 1),
+  ('B', 'Paket B', 2)
+on conflict (kode) do nothing;
 
-insert into soal_paket_b (no, pertanyaan, a, b, c, d, e, kunci, poin) values
-  (1, 'Proses tumbuhan membuat makanannya sendiri disebut ...', 'Respirasi', 'Fotosintesis', 'Transpirasi', 'Evaporasi', 'Kondensasi', 'B', 10),
-  (2, 'Organ pernapasan utama pada manusia adalah ...', 'Jantung', 'Ginjal', 'Paru-paru', 'Hati', 'Lambung', 'C', 10),
-  (3, 'Benda yang dapat ditarik oleh magnet disebut benda ...', 'Magnetis', 'Konduktor', 'Isolator', 'Transparan', 'Luminifer', 'A', 10),
-  (4, 'Perubahan wujud dari cair menjadi gas disebut ...', 'Membeku', 'Menguap', 'Mengembun', 'Menyublim', 'Mencair', 'B', 10),
-  (5, 'Planet yang dikenal sebagai planet merah adalah ...', 'Venus', 'Jupiter', 'Mars', 'Saturnus', 'Neptunus', 'C', 10)
-on conflict (no) do nothing;
+insert into soal (paket, no, pertanyaan, a, b, c, d, e, kunci, poin) values
+  ('A', 1, 'Hasil dari 12 x 8 adalah ...', '86', '96', '106', '116', '126', 'B', 10),
+  ('A', 2, 'Pecahan 3/4 jika diubah ke bentuk desimal adalah ...', '0,25', '0,50', '0,75', '0,80', '1,25', 'C', 10),
+  ('A', 3, 'Keliling persegi dengan panjang sisi 7 cm adalah ...', '21 cm', '28 cm', '35 cm', '49 cm', '56 cm', 'B', 10),
+  ('A', 4, 'Bilangan prima antara 10 dan 20 adalah ...', '11, 13, 17, 19', '11, 12, 13', '13, 15, 17', '11, 13, 15', '12, 14, 16, 18', 'A', 10),
+  ('A', 5, 'Hasil dari 144 / 12 adalah ...', '10', '11', '12', '14', '16', 'C', 10),
+  ('B', 1, 'Proses tumbuhan membuat makanannya sendiri disebut ...', 'Respirasi', 'Fotosintesis', 'Transpirasi', 'Evaporasi', 'Kondensasi', 'B', 10),
+  ('B', 2, 'Organ pernapasan utama pada manusia adalah ...', 'Jantung', 'Ginjal', 'Paru-paru', 'Hati', 'Lambung', 'C', 10),
+  ('B', 3, 'Benda yang dapat ditarik oleh magnet disebut benda ...', 'Magnetis', 'Konduktor', 'Isolator', 'Transparan', 'Luminifer', 'A', 10),
+  ('B', 4, 'Perubahan wujud dari cair menjadi gas disebut ...', 'Membeku', 'Menguap', 'Mengembun', 'Menyublim', 'Mencair', 'B', 10),
+  ('B', 5, 'Planet yang dikenal sebagai planet merah adalah ...', 'Venus', 'Jupiter', 'Mars', 'Saturnus', 'Neptunus', 'C', 10)
+on conflict (paket, no) do nothing;
