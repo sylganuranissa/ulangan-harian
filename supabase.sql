@@ -587,6 +587,33 @@ begin
 end;
 $$;
 
+-- 3s. ubah_status_siswa: guru mengubah status siswa (wajib PIN guru)
+--     Hanya untuk reset (Belum Mulai) atau set selesai manual.
+--     Reset juga menghapus waktu_mulai, waktu_selesai, skor.
+create or replace function ubah_status_siswa(nis_param text, status_param text, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  if status_param not in ('Belum Mulai','Selesai') then
+    return jsonb_build_object('ok', false, 'reason', 'Status harus Belum Mulai atau Selesai.');
+  end if;
+  if not exists (select 1 from siswa where nis = nis_param) then
+    return jsonb_build_object('ok', false, 'reason', 'Siswa tidak ditemukan.');
+  end if;
+  if status_param = 'Belum Mulai' then
+    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null, skor = null
+      where nis = nis_param;
+  else
+    update siswa set status = 'Selesai', waktu_selesai = now()
+      where nis = nis_param;
+  end if;
+  insert into log_aktivitas (nis, event, detail) values (nis_param, 'Ubah_Status', 'Status -> ' || status_param);
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
 -- ======================== 4. STORAGE (gambar soal) ========================
 
 insert into storage.buckets (id, name, public)
