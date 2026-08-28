@@ -816,7 +816,12 @@ async function submitUlangan(isAuto) {
 /* ============================================================
    INIT + EVENT BINDING
    ============================================================ */
-$("inp-nis").addEventListener("input", lookupNIS);
+let nisTimer = null;
+$("inp-nis").addEventListener("input", () => {
+  clearTimeout(nisTimer);
+  nisTimer = setTimeout(lookupNIS, 500);
+});
+$("inp-nis").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(nisTimer); lookupNIS(); } });
 $("inp-token").addEventListener("input", () => {
   $("btn-mulai").disabled = !($("inp-token").value.trim() && nisValidated);
 });
