@@ -507,6 +507,13 @@ async function call(fnName, args) {
 }
 
 const $ = (id) => document.getElementById(id);
+function toast(msg, icon = "info") {
+  const el = document.createElement("div");
+  el.className = "toast glass px-4 py-3 rounded-xl shadow-lift flex items-center gap-2.5 text-sm font-medium pointer-events-auto";
+  el.innerHTML = `<span class="material-symbols-outlined text-[18px]">${icon}</span> ${msg}`;
+  $("toast-box").appendChild(el);
+  el.addEventListener("animationend", (e) => { if (e.animationName === "fadeOut") el.remove(); });
+}
 
 /* ============================================================
    NAVIGATION
