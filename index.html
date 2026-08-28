@@ -90,6 +90,9 @@
   .fade-in { animation: fadeIn .28s cubic-bezier(0.16, 1, 0.3, 1); }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .option:active { transform: scale(0.985); }
+  .skeleton { position: relative; overflow: hidden; background: #e2e7ff; }
+  .skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
   .soal-img { max-width: 100%; max-height: 300px; border-radius: 12px; object-fit: contain; }
   .jawaban-img { max-width: 100%; max-height: 120px; border-radius: 8px; object-fit: contain; }
 </style>
@@ -113,17 +116,17 @@
         <span class="material-symbols-outlined text-3xl">school</span>
       </div>
       <h1 id="login-judul" class="font-display text-2xl md:text-3xl font-bold tracking-tight">Ulangan Harian Online</h1>
-      <p class="text-body-sm text-text-muted mt-2">Masuk menggunakan NIS dan token dari guru.</p>
+      <p class="text-sm text-text-muted mt-2">Masuk menggunakan NIS dan token dari guru.</p>
     </div>
 
-    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-soft p-6 md:p-8">
+    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-soft p-5 md:p-8">
       <div class="space-y-5">
         <div>
           <label for="inp-nis" class="block text-sm font-semibold text-on-surface mb-2">Nomor Induk Siswa (NIS)</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">badge</span>
             <input id="inp-nis" inputmode="numeric" autocomplete="off" placeholder="Masukkan NIS kamu"
-              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
           </div>
           <p id="err-nis" class="hidden text-sm text-error mt-2"></p>
         </div>
@@ -144,14 +147,14 @@
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">key</span>
             <input id="inp-token" autocomplete="off" placeholder="Token dari guru"
-              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
           </div>
           <p class="text-xs text-text-muted mt-2">Gunakan token master atau token individual yang diberikan gurumu.</p>
           <p id="err-token" class="hidden text-sm text-error mt-2"></p>
         </div>
 
         <button id="btn-mulai" disabled
-          class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 px-6 hover:bg-tertiary transition-colors shadow-lift disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
+          class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 px-6 hover:bg-tertiary active:scale-[0.98] transition-all shadow-lift disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
           <span>Mulai Ulangan</span>
           <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
         </button>
@@ -175,11 +178,26 @@
       </div>
       <div class="ml-auto flex items-center gap-2">
         <span id="exam-paket" class="hidden text-xs font-bold bg-secondary-container text-primary rounded-full px-3 py-1"></span>
-        <span id="exam-progress" class="text-xs font-semibold text-on-surface-variant tnum"></span>
         <div id="exam-timer" class="flex items-center gap-1.5 bg-primary text-on-primary rounded-full px-3 py-1.5 text-sm font-bold tnum shadow-soft">
           <span class="material-symbols-outlined text-[16px]">timer</span>
           <span id="exam-timer-text">30:00</span>
         </div>
+      </div>
+    </div>
+    <div class="border-t border-border-subtle">
+      <div class="max-w-3xl mx-auto px-4 py-2 flex items-center gap-3">
+        <div class="w-20 sm:w-28 h-1.5 bg-surface-container-highest rounded-full overflow-hidden shrink-0" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Progres pengerjaan">
+          <div id="exam-progress-fill" class="h-full bg-primary rounded-full transition-all duration-500" style="width:0%"></div>
+        </div>
+        <span id="exam-progress" class="text-xs font-semibold text-on-surface-variant tnum"></span>
+        <button id="btn-nav-soal" type="button" class="ml-auto flex items-center gap-1 text-xs font-semibold text-primary bg-secondary-container rounded-full px-3 py-1.5 hover:bg-primary-fixed active:scale-[0.97] transition-all" aria-expanded="false" aria-controls="nav-soal">
+          <span class="material-symbols-outlined text-[16px]">grid_view</span>
+          <span class="hidden sm:inline">Daftar Soal</span>
+          <span class="material-symbols-outlined text-[16px] transition-transform duration-200" id="nav-soal-chevron">expand_more</span>
+        </button>
+      </div>
+      <div id="nav-soal" class="hidden max-w-3xl mx-auto px-4 pb-3 pt-3 max-h-[55dvh] overflow-y-auto overscroll-contain">
+        <div id="nav-soal-grid" class="grid grid-cols-7 sm:grid-cols-8 gap-2"></div>
       </div>
     </div>
   </header>
@@ -191,11 +209,12 @@
       <div class="flex items-center gap-2 text-xs text-text-muted">
         <span id="save-indicator" class="inline-flex items-center gap-1 text-on-secondary-container">
           <span class="material-symbols-outlined text-[16px]">cloud_done</span>
-          <span>Tersimpan otomatis</span>
+          <span class="hidden sm:inline">Tersimpan otomatis</span>
         </span>
       </div>
-      <button id="btn-selesai" class="ml-auto flex items-center gap-2 bg-error text-on-error font-semibold rounded-full px-6 py-3 hover:opacity-90 transition-opacity shadow-lift">
-        <span>Selesai Ulangan</span>
+      <button id="btn-selesai" class="ml-auto flex items-center gap-2 bg-error text-on-error font-semibold rounded-full px-5 sm:px-6 py-3 hover:opacity-90 active:scale-[0.98] transition-all shadow-lift">
+        <span class="hidden sm:inline">Selesai Ulangan</span>
+        <span class="sm:hidden">Selesai</span>
         <span class="material-symbols-outlined text-[20px]">flag</span>
       </button>
     </div>
@@ -206,12 +225,12 @@
 <main id="screen-lock" class="hidden min-h-[100dvh] flex items-center justify-center px-4 py-10">
   <div class="fixed inset-0 -z-10 bg-surface/40 backdrop-blur-xl"></div>
   <div class="w-full max-w-md fade-in">
-    <div class="bg-white border border-border-subtle rounded-2xl shadow-lift p-8 text-center">
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-lift p-6 md:p-8 text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-error-container text-on-error-container rounded-2xl mb-5">
         <span class="material-symbols-outlined text-4xl">lock</span>
       </div>
       <h2 class="font-display text-2xl font-bold tracking-tight">Ulangan Terkunci</h2>
-      <p class="text-body-sm text-on-surface-variant mt-2">Kamu meninggalkan halaman ulangan. Untuk melanjutkan, minta token baru ke gurumu.</p>
+      <p class="text-sm text-on-surface-variant mt-2">Kamu meninggalkan halaman ulangan. Untuk melanjutkan, minta token baru ke gurumu.</p>
 
       <div class="flex items-center justify-center gap-2 mt-5 bg-secondary-container/60 rounded-2xl px-4 py-3 text-sm text-on-secondary-container">
         <span class="material-symbols-outlined text-[18px]">verified</span>
@@ -223,12 +242,12 @@
         <div class="relative">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">key</span>
           <input id="inp-unlock-token" autocomplete="off" placeholder="Masukkan token baru"
-            class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+            class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
         </div>
         <p id="err-unlock" class="hidden text-sm text-error mt-2"></p>
       </div>
 
-      <button id="btn-lanjut" class="mt-6 w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 hover:bg-tertiary transition-colors shadow-lift">
+      <button id="btn-lanjut" class="mt-6 w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 hover:bg-tertiary active:scale-[0.98] transition-all shadow-lift">
         <span>Lanjutkan Ulangan</span>
         <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
       </button>
@@ -239,16 +258,16 @@
 <!-- ============ SCREEN: RESULT ============ -->
 <main id="screen-result" class="hidden min-h-[100dvh] flex items-center justify-center px-4 py-10">
   <div class="w-full max-w-md fade-in">
-    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-lift p-8 text-center">
+    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-lift p-6 md:p-8 text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-secondary-container text-primary rounded-2xl mb-5">
         <span class="material-symbols-outlined text-4xl">celebration</span>
       </div>
       <h2 class="font-display text-2xl font-bold tracking-tight">Ulangan Selesai</h2>
-      <p class="text-body-sm text-on-surface-variant mt-2">Terima kasih sudah mengerjakan. Berikut hasil kamu:</p>
+      <p class="text-sm text-on-surface-variant mt-2">Terima kasih sudah mengerjakan. Berikut hasil kamu:</p>
 
       <div class="mt-6 bg-primary text-on-primary rounded-2xl p-6 shadow-lift">
         <div class="text-sm opacity-80">Nilai Akhir</div>
-        <div class="font-display text-6xl font-bold tnum mt-1" id="result-skor">0</div>
+        <div class="font-display text-5xl md:text-6xl font-bold tnum mt-1" id="result-skor">0</div>
         <div class="text-sm opacity-80 mt-2" id="result-detail"></div>
       </div>
 
@@ -278,12 +297,12 @@
       </div>
       <div>
         <h3 class="font-display font-bold">Selesai ulangan?</h3>
-        <p class="text-body-sm text-on-surface-variant mt-1">Tindakan ini tidak bisa dibatalkan. Jawaban akan dinilai dan kamu tidak bisa mengerjakan ulang.</p>
+        <p class="text-sm text-on-surface-variant mt-1">Tindakan ini tidak bisa dibatalkan. Jawaban akan dinilai dan kamu tidak bisa mengerjakan ulang.</p>
       </div>
     </div>
     <div class="flex gap-3 mt-6">
-      <button id="btn-batal-submit" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
-      <button id="btn-konfirmasi-submit" class="flex-1 bg-error text-on-error font-semibold rounded-full py-2.5 hover:opacity-90 transition-opacity">Ya, Selesai</button>
+      <button id="btn-batal-submit" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed active:scale-[0.98] transition-all">Batal</button>
+      <button id="btn-konfirmasi-submit" class="flex-1 bg-error text-on-error font-semibold rounded-full py-2.5 hover:opacity-90 active:scale-[0.98] transition-all">Ya, Selesai</button>
     </div>
   </div>
 </div>
@@ -539,8 +558,9 @@ async function lookupNIS() {
   $("identitas-nama").textContent = res.Nama;
   $("identitas-kelas").textContent = res.Kelas;
   $("identitas-paket").textContent = "Paket " + res.Paket_Soal;
-  $("identitas-box").classList.remove("hidden");
-  $("identitas-box").classList.add("flex");
+  const ib = $("identitas-box");
+  ib.classList.remove("hidden");
+  ib.classList.add("flex", "fade-in");
 
   if (res.Status === "Mengerjakan") {
     $("token-box").classList.add("hidden");
@@ -583,6 +603,8 @@ async function mulaiUlangan() {
    EXAM FLOW
    ============================================================ */
 async function enterExam() {
+  $("exam-body").innerHTML = '<div class="skeleton h-48 rounded-2xl"></div><div class="skeleton h-48 rounded-2xl mt-5"></div><div class="skeleton h-48 rounded-2xl mt-5"></div>';
+  showScreen("screen-exam");
   const res = await api.getSoal(state.nis);
   state.soal = res.soal;
   state.paket = res.paket;
@@ -610,7 +632,7 @@ function renderSoal() {
   const OPT = ["A", "B", "C", "D", "E"];
   state.soal.forEach(q => {
     const card = document.createElement("div");
-    card.className = "bg-white border border-border-subtle rounded-2xl shadow-soft p-5 md:p-6";
+    card.className = "bg-white border border-border-subtle rounded-2xl shadow-soft p-5 md:p-6 scroll-mt-32";
     card.id = "soal-" + q.No;
 
     const head = document.createElement("div");
@@ -659,8 +681,80 @@ function renderSoal() {
     card.appendChild(opts);
     body.appendChild(card);
   });
+  buildNavSoal();
   updateOptionStates();
   updateProgress();
+  setupNavSoalIO();
+}
+
+let currentSoal = null;
+
+function buildNavSoal() {
+  const grid = $("nav-soal-grid");
+  grid.innerHTML = "";
+  state.soal.forEach(q => {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.dataset.no = q.No;
+    pill.setAttribute("aria-label", "Lompat ke soal " + q.No);
+    pill.className = "h-10 rounded-lg text-xs font-bold tnum transition-all flex items-center justify-center min-w-0 whitespace-nowrap";
+    pill.textContent = q.No;
+    grid.appendChild(pill);
+  });
+}
+
+function updateNavSoalPills() {
+  state.soal.forEach(q => {
+    const pill = document.querySelector(`#nav-soal-grid button[data-no="${q.No}"]`);
+    if (!pill) return;
+    const answered = !!state.jawaban[q.No];
+    if (q.No === currentSoal) {
+      pill.className = "h-10 rounded-lg text-xs font-bold tnum transition-all flex items-center justify-center min-w-0 whitespace-nowrap ring-2 ring-primary bg-secondary-container text-primary";
+    } else if (answered) {
+      pill.className = "h-10 rounded-lg text-xs font-bold tnum transition-all flex items-center justify-center min-w-0 whitespace-nowrap bg-primary text-on-primary";
+    } else {
+      pill.className = "h-10 rounded-lg text-xs font-bold tnum transition-all flex items-center justify-center min-w-0 whitespace-nowrap bg-surface-container text-on-surface-variant hover:bg-surface-container-high";
+    }
+  });
+}
+
+let navSoalIO = null;
+function setupNavSoalIO() {
+  if (navSoalIO) navSoalIO.disconnect();
+  currentSoal = null;
+  navSoalIO = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const no = parseInt(en.target.id.replace("soal-", ""), 10);
+      currentSoal = no;
+      updateNavSoalPills();
+    });
+  }, { rootMargin: "-96px 0px -60% 0px", threshold: 0 });
+  state.soal.forEach(q => {
+    const card = document.getElementById("soal-" + q.No);
+    if (card) navSoalIO.observe(card);
+  });
+}
+
+function toggleNavSoal() {
+  const panel = $("nav-soal");
+  const chevron = $("nav-soal-chevron");
+  const btn = $("btn-nav-soal");
+  const open = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !open);
+  chevron.style.transform = open ? "rotate(180deg)" : "";
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function goToSoal(no) {
+  const card = document.getElementById("soal-" + no);
+  if (!card) return;
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("nav-soal").classList.add("hidden");
+  $("nav-soal-chevron").style.transform = "";
+  $("btn-nav-soal").setAttribute("aria-expanded", "false");
+  currentSoal = no;
+  updateNavSoalPills();
 }
 
 function updateOptionStates() {
@@ -691,7 +785,11 @@ function updateOptionStates() {
 function updateProgress() {
   const total = state.soal.length;
   const answered = Object.keys(state.jawaban).filter(k => state.jawaban[k]).length;
+  const pct = total ? Math.round((answered / total) * 100) : 0;
   $("exam-progress").textContent = answered + "/" + total + " terjawab";
+  const fill = $("exam-progress-fill");
+  if (fill) fill.style.width = pct + "%";
+  updateNavSoalPills();
 }
 
 async function pilihJawaban(no, val) {
@@ -726,6 +824,11 @@ function tick() {
   const remaining = Math.max(0, state.durasi - elapsed);
   $("exam-timer-text").textContent = fmtTime(remaining);
   const timerEl = $("exam-timer");
+  if (remaining <= 120) {
+    timerEl.classList.add("animate-pulse");
+  } else {
+    timerEl.classList.remove("animate-pulse");
+  }
   if (remaining <= 300) {
     timerEl.classList.remove("bg-primary");
     timerEl.classList.add("bg-error");
@@ -825,12 +928,20 @@ $("inp-nis").addEventListener("keydown", e => { if (e.key === "Enter") { clearTi
 $("inp-token").addEventListener("input", () => {
   $("btn-mulai").disabled = !($("inp-token").value.trim() && nisValidated);
 });
+$("inp-token").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !$("btn-mulai").disabled) mulaiUlangan();
+});
 $("btn-mulai").addEventListener("click", mulaiUlangan);
 $("btn-selesai").addEventListener("click", openSubmitModal);
 $("btn-batal-submit").addEventListener("click", closeSubmitModal);
 $("btn-konfirmasi-submit").addEventListener("click", () => submitUlangan(false));
 $("btn-lanjut").addEventListener("click", lanjutkan);
 $("inp-unlock-token").addEventListener("keydown", e => { if (e.key === "Enter") lanjutkan(); });
+$("btn-nav-soal").addEventListener("click", toggleNavSoal);
+$("nav-soal-grid").addEventListener("click", e => {
+  const pill = e.target.closest("button[data-no]");
+  if (pill) goToSoal(parseInt(pill.dataset.no, 10));
+});
 
 $("exam-body").addEventListener("click", e => {
   const btn = e.target.closest(".option");

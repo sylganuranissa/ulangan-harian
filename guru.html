@@ -51,6 +51,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important}}
 .fade-in{animation:fadeIn .25s cubic-bezier(0.16,1,0.3,1)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.skeleton{position:relative;overflow:hidden;background:#e2e7ff}
+.skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);animation:shimmer 1.4s infinite}
+@keyframes shimmer{100%{transform:translateX(100%)}}
 .img-preview-wrap{position:relative;display:inline-block;margin-top:6px}
 .img-preview-wrap img{max-height:140px;border-radius:10px;border:1px solid var(--border-subtle,#E2E8F0);object-fit:contain}
 .img-preview-remove{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(186,26,26,0.85);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
@@ -71,7 +74,7 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 <body class="bg-surface text-on-surface font-body overflow-x-hidden min-h-[100dvh]">
 
 <!-- ============ TOAST CONTAINER ============ -->
-<div id="toast-box" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+<div id="toast-box" class="fixed top-4 right-4 left-4 sm:left-auto z-50 space-y-2 pointer-events-none"></div>
 
 <!-- ============ BACKGROUND DECOR ============ -->
 <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -89,18 +92,18 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
       <h1 class="font-display text-2xl md:text-3xl font-bold tracking-tight">Panel Guru</h1>
       <p class="text-sm text-text-muted mt-2">Masukkan PIN admin untuk mengelola ulangan.</p>
     </div>
-    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-soft p-6 md:p-8">
+    <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-soft p-5 md:p-8">
       <div class="space-y-5">
         <div>
           <label for="inp-pin" class="block text-sm font-semibold text-on-surface mb-2">PIN Admin</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">lock</span>
             <input id="inp-pin" type="password" autocomplete="off" placeholder="Masukkan PIN"
-              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow transition-all"/>
+              class="w-full pl-10 pr-4 py-3 bg-white border border-outline-variant rounded-full text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
           </div>
           <p id="err-pin" class="hidden text-sm text-error mt-2"></p>
         </div>
-        <button id="btn-pin-login" class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 px-6 hover:bg-tertiary transition-colors shadow-lift">
+        <button id="btn-pin-login" class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-semibold rounded-full py-3 px-6 hover:bg-tertiary active:scale-[0.98] transition-all shadow-lift">
           <span>Masuk</span>
           <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
         </button>
@@ -111,15 +114,14 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 </main>
 
 <!-- ============ SCREEN: APP SHELL ============ -->
-<div id="app-shell" class="hidden min-h-[100dvh]">
+<div id="app-shell" class="hidden min-h-[100dvh] pt-[52px] lg:pt-0">
   <!-- Mobile top bar -->
   <header class="lg:hidden fixed top-0 left-0 right-0 z-40 glass border-b border-border-subtle">
-    <div class="flex items-center gap-3 px-4 py-3">
+    <div class="flex items-center gap-3 px-4 h-[52px]">
       <span class="material-symbols-outlined text-primary text-[22px]">school</span>
       <span class="font-display font-bold text-sm truncate">Panel Guru</span>
       <button id="btn-mobile-menu" class="ml-auto text-primary"><span class="material-symbols-outlined">menu</span></button>
     </div>
-    <div id="mobile-tabs" class="hidden px-4 pb-3 flex gap-2 overflow-x-auto"></div>
   </header>
 
   <!-- Sidebar (desktop) -->
@@ -141,7 +143,7 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 
   <!-- Main content -->
   <div class="lg:ml-60 min-h-[100dvh]">
-    <div id="main-area" class="max-w-6xl mx-auto px-4 md:px-8 py-6 lg:py-8 mt-[52px] lg:mt-0"></div>
+    <div id="main-area" class="max-w-6xl mx-auto px-4 md:px-8 py-6 lg:py-8"></div>
   </div>
 
   <!-- Mobile menu drawer -->
@@ -167,9 +169,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 
 <!-- ============ MODALS ============ -->
 <!-- Modal siswa (tambah/edit) -->
-<div id="modal-siswa" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+<div id="modal-siswa" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-md fade-in">
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-md max-h-[90dvh] overflow-y-auto fade-in">
     <h3 id="modal-siswa-title" class="font-display text-lg font-bold mb-5">Tambah Siswa</h3>
     <input type="hidden" id="modal-siswa-idx" value="-1"/>
     <div class="space-y-4">
@@ -195,9 +197,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 </div>
 
 <!-- Modal soal (tambah/edit) -->
-<div id="modal-soal" class="hidden fixed inset-0 z-50 flex items-start justify-center px-4 pt-16 pb-4 overflow-y-auto">
+<div id="modal-soal" class="hidden fixed inset-0 z-50 flex items-end sm:items-start justify-center overflow-y-auto">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-xl fade-in">
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl sm:mt-16 shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-xl max-h-[90dvh] overflow-y-auto fade-in">
     <h3 id="modal-soal-title" class="font-display text-lg font-bold mb-5">Tambah Soal</h3>
     <input type="hidden" id="modal-soal-idx" value="-1"/>
     <div class="space-y-4">
@@ -285,9 +287,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 </div>
 
 <!-- Modal token (lihat token aktif) -->
-<div id="modal-token" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+<div id="modal-token" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-sm fade-in text-center">
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-sm max-h-[90dvh] overflow-y-auto fade-in text-center">
     <div class="inline-flex items-center justify-center w-14 h-14 bg-secondary-container text-primary rounded-2xl mb-4">
       <span class="material-symbols-outlined text-3xl">key</span>
     </div>
@@ -304,9 +306,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 </div>
 
 <!-- Modal hapus konfirmasi -->
-<div id="modal-hapus" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+<div id="modal-hapus" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-sm fade-in">
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-sm max-h-[90dvh] overflow-y-auto fade-in">
     <h3 class="font-display text-lg font-bold mb-2" id="modal-hapus-title">Hapus?</h3>
     <p class="text-sm text-on-surface-variant" id="modal-hapus-desc">Tindakan ini tidak dapat dibatalkan.</p>
     <input type="hidden" id="modal-hapus-idx"/>
@@ -318,9 +320,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
 </div>
 
 <!-- Modal reset data konfirmasi -->
-<div id="modal-reset" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+<div id="modal-reset" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
-  <div class="relative bg-white border border-border-subtle rounded-2xl shadow-lift p-6 w-full max-w-sm fade-in">
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-sm max-h-[90dvh] overflow-y-auto fade-in">
     <div class="flex items-start gap-3 mb-3">
       <div class="w-10 h-10 bg-error-container text-on-error-container rounded-full flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[22px]">warning</span>
@@ -547,7 +549,7 @@ async function call(fnName, args) {
 const $ = (id) => document.getElementById(id);
 function toast(msg, icon = "info") {
   const el = document.createElement("div");
-  el.className = "toast glass px-4 py-3 rounded-xl shadow-lift flex items-center gap-2.5 text-sm font-medium pointer-events-auto";
+  el.className = "toast glass max-w-full px-4 py-3 rounded-xl shadow-lift flex items-center gap-2.5 text-sm font-medium pointer-events-auto";
   el.innerHTML = `<span class="material-symbols-outlined text-[18px]">${icon}</span> ${msg}`;
   $("toast-box").appendChild(el);
   el.addEventListener("animationend", (e) => { if (e.animationName === "fadeOut") el.remove(); });
@@ -581,17 +583,6 @@ function buildNav(container) {
     container.appendChild(btn);
   });
 }
-function buildMobileTabs(container) {
-  container.innerHTML = "";
-  VIEWS.forEach(v => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.view = v.id;
-    btn.className = "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all border-border-subtle text-on-surface-variant";
-    btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">'+v.icon+'</span>'+v.label;
-    container.appendChild(btn);
-  });
-}
 
 function switchView(id) {
   currentView = id;
@@ -603,10 +594,6 @@ function switchView(id) {
       if (b.dataset.view === id) { b.classList.add("bg-secondary-container","text-primary"); b.classList.remove("text-on-surface-variant","hover:bg-secondary-container/50"); }
       else { b.classList.remove("bg-secondary-container","text-primary"); b.classList.add("text-on-surface-variant","hover:bg-secondary-container/50"); }
     });
-  });
-  $("mobile-tabs").querySelectorAll("button").forEach(b => {
-    if (b.dataset.view === id) { b.classList.add("bg-primary","text-on-primary","border-primary"); b.classList.remove("border-border-subtle","text-on-surface-variant"); }
-    else { b.classList.remove("bg-primary","text-on-primary","border-primary"); b.classList.add("border-border-subtle","text-on-surface-variant"); }
   });
   closeDrawer();
 }
@@ -624,6 +611,7 @@ async function renderView() {
 
 /* --- DASHBOARD --- */
 async function renderDashboard() {
+  $("main-area").innerHTML = '<h2 class="font-display text-xl md:text-2xl font-bold mb-6">Dashboard</h2><div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">' + Array(5).fill().map(() => '<div class="skeleton h-24 rounded-2xl"></div>').join("") + '</div><div class="skeleton h-64 rounded-2xl"></div>';
   const stats = await call("getDashboardStats", []);
   const { total, mengerjakan, terkunci, selesai, avgSkor, siswa } = stats;
 
@@ -634,28 +622,29 @@ async function renderDashboard() {
       ${statCard("pending","Mengerjakan",mengerjakan,"bg-blue-100 text-blue-700","","stat-mengerjakan")}
       ${statCard("lock","Terkunci",terkunci,"error-container","on-error-container","stat-terkunci")}
       ${statCard("check_circle","Selesai",selesai,"bg-emerald-100 text-emerald-700","","stat-selesai")}
-      ${statCard("star","Rata-rata Skor",avgSkor,"secondary-container","primary","stat-avg")}
+      <div class="col-span-2 lg:col-span-1">${statCard("star","Rata-rata Skor",avgSkor,"secondary-container","primary","stat-avg")}</div>
     </div>
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
       <h3 class="font-display font-bold text-base">Daftar Siswa</h3>
       <div class="flex gap-2 sm:ml-auto w-full sm:w-auto">
         <div class="relative flex-1 sm:flex-initial">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-          <input id="dash-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-52 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all"/>
+          <input id="dash-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-52 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
         </div>
-        <select id="dash-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <select id="dash-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Status</option>
           <option value="Belum Mulai">Belum Mulai</option>
           <option value="Mengerjakan">Mengerjakan</option>
           <option value="Terkunci">Terkunci</option>
           <option value="Selesai">Selesai</option>
         </select>
-        <button onclick="exportHasilCSV()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-3 py-2 text-sm hover:bg-primary-fixed transition-colors whitespace-nowrap">
+        <button onclick="exportHasilCSV()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-3 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all whitespace-nowrap">
           <span class="material-symbols-outlined text-[18px]">download</span> Export Hasil
         </button>
       </div>
     </div>
-    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+    <div class="md:hidden space-y-3" id="dash-cards"></div>
+    <div class="hidden md:block bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="border-b border-border-subtle">
@@ -684,22 +673,54 @@ async function renderDashboard() {
       return true;
     });
     const tbody = $("dash-body");
-    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-text-muted">Tidak ada data.</td></tr>'; return; }
+    const cards = $("dash-cards");
+    if (!rows.length) {
+      const empty = '<div class="text-center py-8 text-text-muted">Tidak ada data siswa.</div>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-text-muted">Tidak ada data.</td></tr>';
+      if (cards) cards.innerHTML = empty;
+      return;
+    }
     const indices = rows.map(s => siswa.indexOf(s));
-    tbody.innerHTML = indices.map(origIdx => {
-      const s = siswa[origIdx];
-      const statusCls = STATUS_CLS[s.Status] || "";
-      const skor = s.Skor!=null ? s.Skor : "-";
-      return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
-        <td class="px-4 py-3 font-semibold tnum">${esc(s.NIS)}</td>
-        <td class="px-4 py-3">${esc(s.Nama)}</td>
-        <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
-        <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
-        <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${esc(s.Status)}</span></td>
-        <td class="px-4 py-3 text-center tnum font-semibold hidden sm:table-cell">${skor}</td>
-        <td class="px-4 py-3 text-center">${s.Token_Aktif ? '<button onclick="viewToken('+origIdx+')" class="text-primary hover:text-tertiary transition-colors" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : '<span class="text-outline-variant">-</span>'}</td>
-      </tr>`;
-    }).join("");
+    if (tbody) {
+      tbody.innerHTML = indices.map(origIdx => {
+        const s = siswa[origIdx];
+        const statusCls = STATUS_CLS[s.Status] || "";
+        const skor = s.Skor!=null ? s.Skor : "-";
+        return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+          <td class="px-4 py-3 font-semibold tnum">${esc(s.NIS)}</td>
+          <td class="px-4 py-3">${esc(s.Nama)}</td>
+          <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
+          <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
+          <td class="px-4 py-3 text-center"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${esc(s.Status)}</span></td>
+          <td class="px-4 py-3 text-center tnum font-semibold hidden sm:table-cell">${skor}</td>
+          <td class="px-4 py-3 text-center">${s.Token_Aktif ? '<button onclick="viewToken('+origIdx+')" class="text-primary hover:text-tertiary transition-colors" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : '<span class="text-outline-variant">-</span>'}</td>
+        </tr>`;
+      }).join("");
+    }
+    if (cards) {
+      cards.innerHTML = indices.map(origIdx => {
+        const s = siswa[origIdx];
+        const statusCls = STATUS_CLS[s.Status] || "";
+        const skor = s.Skor!=null ? s.Skor : "-";
+        return `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-4 flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-sm tnum">${esc(s.NIS)}</span>
+              <span class="inline-block w-6 h-6 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-6 text-center">${esc(s.Paket_Soal)||'-'}</span>
+            </div>
+            <div class="text-sm font-medium truncate">${esc(s.Nama)}</div>
+            <div class="text-xs text-text-muted truncate">${esc(s.Kelas)}</div>
+          </div>
+          <div class="text-right shrink-0">
+            <div><span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${statusCls}">${esc(s.Status)}</span></div>
+            <div class="text-xs font-semibold tnum mt-1 text-on-surface-variant">${skor}</div>
+          </div>
+          <div class="flex flex-col gap-1 shrink-0">
+            ${s.Token_Aktif ? '<button onclick="viewToken('+origIdx+')" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-primary" title="Lihat token"><span class="material-symbols-outlined text-[18px]">visibility</span></button>' : ''}
+          </div>
+        </div>`;
+      }).join("");
+    }
   }
   $("dash-search").addEventListener("input", renderTable);
   $("dash-filter").addEventListener("change", renderTable);
@@ -740,17 +761,18 @@ function closeModalToken() { $("modal-token").classList.add("hidden"); $("modal-
 
 /* --- KELOLA SISWA --- */
 async function renderSiswa() {
+  $("main-area").innerHTML = '<div class="flex items-center justify-between mb-6 flex-wrap gap-3"><h2 class="font-display text-xl md:text-2xl font-bold">Kelola Siswa</h2></div><div class="skeleton h-64 rounded-2xl"></div>';
   let html = `
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Siswa</h2>
       <div class="flex items-center gap-2">
-        <button onclick="downloadImportTemplate()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed transition-colors">
+        <button onclick="downloadImportTemplate()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all">
           <span class="material-symbols-outlined text-[18px]">description</span> Template
         </button>
-        <button onclick="document.getElementById('csv-import').click()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed transition-colors">
+        <button onclick="document.getElementById('csv-import').click()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all">
           <span class="material-symbols-outlined text-[18px]">upload_file</span> Import CSV
         </button>
-        <button onclick="openModalSiswa()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary transition-colors shadow-soft">
+        <button onclick="openModalSiswa()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary active:scale-[0.97] transition-all shadow-soft">
           <span class="material-symbols-outlined text-[18px]">person_add</span> Tambah
         </button>
       </div>
@@ -759,18 +781,18 @@ async function renderSiswa() {
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
       <div class="relative flex-1 sm:flex-initial">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-        <input id="siswa-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-56 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all"/>
+        <input id="siswa-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-56 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
       </div>
       <div class="flex flex-wrap gap-2 sm:ml-auto">
-        <select id="siswa-paket" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <select id="siswa-paket" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Paket</option>
           <option value="A">Paket A</option>
           <option value="B">Paket B</option>
         </select>
-        <select id="siswa-kelas" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <select id="siswa-kelas" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Kelas</option>
         </select>
-        <select id="siswa-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+        <select id="siswa-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Status</option>
           <option value="Belum Mulai">Belum Mulai</option>
           <option value="Mengerjakan">Mengerjakan</option>
@@ -779,7 +801,8 @@ async function renderSiswa() {
         </select>
       </div>
     </div>
-    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+    <div class="md:hidden space-y-3" id="siswa-cards"></div>
+    <div class="hidden md:block bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="border-b border-border-subtle">
@@ -808,6 +831,14 @@ async function renderSiswa() {
   $("siswa-paket").addEventListener("change", renderSiswaTable);
   $("siswa-kelas").addEventListener("change", renderSiswaTable);
   $("siswa-body").addEventListener("change", async e => {
+    const sel = e.target.closest("select[data-nis]");
+    if (!sel) return;
+    const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
+    if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
+    else toast("Status diubah ke " + sel.value, "check_circle");
+    await renderSiswaTable();
+  });
+  $("siswa-cards").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
     const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
@@ -898,32 +929,64 @@ async function renderSiswaTable() {
   });
   updateSiswaSortIcons();
   const tbody = $("siswa-body");
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>'; return; }
+  const cards = $("siswa-cards");
+  if (!rows.length) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-text-muted">Belum ada data siswa.</td></tr>';
+    if (cards) cards.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">person_search</span><p class="mt-2 text-sm">Belum ada data siswa. Tambah siswa atau import CSV.</p></div>';
+    return;
+  }
   const indices = rows.map(s => siswa.indexOf(s));
-  tbody.innerHTML = indices.map(origIdx => {
-    const s = siswa[origIdx];
-    const statusCls = STATUS_CLS[s.Status]||"";
-    const midStatus = (s.Status === "Mengerjakan" || s.Status === "Terkunci");
-    const selOpts = (midStatus ? `<option value="${esc(s.Status)}" selected disabled>${esc(s.Status)}</option>` : "")
-      + `<option value="Belum Mulai" ${s.Status==="Belum Mulai"?'selected':''}>Belum Mulai</option>`
-      + `<option value="Selesai" ${s.Status==="Selesai"?'selected':''}>Selesai</option>`;
-    return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
-      <td class="px-4 py-3 font-semibold tnum">${esc(s.NIS)}</td>
-      <td class="px-4 py-3">${esc(s.Nama)}</td>
-      <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
-      <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
-      <td class="px-4 py-3 text-center">
-        <select data-nis="${esc(s.NIS)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
-      </td>
-      <td class="px-4 py-3">
-        <div class="flex items-center justify-center gap-1">
-          <button onclick="openModalSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-          <button onclick="confirmGenToken(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[18px]">key</span></button>
-          <button onclick="confirmHapusSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+  if (tbody) {
+    tbody.innerHTML = indices.map(origIdx => {
+      const s = siswa[origIdx];
+      const statusCls = STATUS_CLS[s.Status]||"";
+      const midStatus = (s.Status === "Mengerjakan" || s.Status === "Terkunci");
+      const selOpts = (midStatus ? `<option value="${esc(s.Status)}" selected disabled>${esc(s.Status)}</option>` : "")
+        + `<option value="Belum Mulai" ${s.Status==="Belum Mulai"?'selected':''}>Belum Mulai</option>`
+        + `<option value="Selesai" ${s.Status==="Selesai"?'selected':''}>Selesai</option>`;
+      return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+        <td class="px-4 py-3 font-semibold tnum">${esc(s.NIS)}</td>
+        <td class="px-4 py-3">${esc(s.Nama)}</td>
+        <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
+        <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
+        <td class="px-4 py-3 text-center">
+          <select data-nis="${esc(s.NIS)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex items-center justify-center gap-1">
+            <button onclick="openModalSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+            <button onclick="confirmGenToken(${origIdx})" class="p-1.5 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[18px]">key</span></button>
+            <button onclick="confirmHapusSiswa(${origIdx})" class="p-1.5 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+  if (cards) {
+    cards.innerHTML = indices.map(origIdx => {
+      const s = siswa[origIdx];
+      const statusCls = STATUS_CLS[s.Status]||"";
+      const midStatus = (s.Status === "Mengerjakan" || s.Status === "Terkunci");
+      const selOpts = (midStatus ? `<option value="${esc(s.Status)}" selected disabled>${esc(s.Status)}</option>` : "")
+        + `<option value="Belum Mulai" ${s.Status==="Belum Mulai"?'selected':''}>Belum Mulai</option>`
+        + `<option value="Selesai" ${s.Status==="Selesai"?'selected':''}>Selesai</option>`;
+      return `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-4">
+        <div class="flex items-start gap-3">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold shrink-0">${esc(s.Paket_Soal)||'-'}</span>
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-sm truncate">${esc(s.Nama)}</div>
+            <div class="text-xs text-text-muted tnum">${esc(s.NIS)} <span class="text-outline-variant">/</span> ${esc(s.Kelas)}</div>
+          </div>
+          <select data-nis="${esc(s.NIS)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer shrink-0 ${statusCls}">${selOpts}</select>
         </div>
-      </td>
-    </tr>`;
-  }).join("");
+        <div class="flex items-center justify-end gap-1 mt-3 pt-2 border-t border-border-subtle/60">
+          <button onclick="openModalSiswa(${origIdx})" class="p-2 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+          <button onclick="confirmGenToken(${origIdx})" class="p-2 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Generate token"><span class="material-symbols-outlined text-[20px]">key</span></button>
+          <button onclick="confirmHapusSiswa(${origIdx})" class="p-2 rounded-lg hover:bg-error-container/50 transition-colors text-on-surface-variant hover:text-error" title="Hapus"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+        </div>
+      </div>`;
+    }).join("");
+  }
 }
 
 async function openModalSiswa(idx) {
@@ -970,6 +1033,7 @@ function confirmHapusSiswa(idx) {
 /* --- KELOLA SOAL --- */
 let soalPaket = "A";
 async function renderSoal() {
+  $("main-area").innerHTML = '<div class="flex items-center justify-between mb-6 flex-wrap gap-3"><h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2></div><div class="skeleton h-64 rounded-2xl"></div>';
   let html = `
     <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
       <h2 class="font-display text-xl md:text-2xl font-bold">Kelola Soal</h2>
@@ -978,7 +1042,7 @@ async function renderSoal() {
           <button onclick="switchSoalPaket('A')" id="spA" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket A</button>
           <button onclick="switchSoalPaket('B')" id="spB" class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all">Paket B</button>
         </div>
-        <button onclick="openModalSoal()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary transition-colors shadow-soft">
+        <button onclick="openModalSoal()" class="flex items-center gap-2 bg-primary text-on-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-tertiary active:scale-[0.97] transition-all shadow-soft">
           <span class="material-symbols-outlined text-[18px]">add</span> Tambah
         </button>
       </div>
@@ -991,12 +1055,13 @@ async function switchSoalPaket(p) {
   soalPaket = p;
   $("spA").className = p==="A" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
   $("spB").className = p==="B" ? "px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-on-primary" : "px-4 py-1.5 rounded-full text-sm font-semibold text-primary";
+  $("soal-list").innerHTML = '<div class="skeleton h-24 rounded-2xl mb-3"></div><div class="skeleton h-24 rounded-2xl mb-3"></div>';
   await renderSoalList();
 }
 async function renderSoalList() {
   const soal = await call("getSoalByPaket", [soalPaket]);
   const el = $("soal-list");
-  if (!soal.length) { el.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted">Belum ada soal untuk Paket '+soalPaket+'.</div>'; return; }
+  if (!soal.length) { el.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">quiz</span><p class="mt-2 text-sm">Belum ada soal untuk Paket '+soalPaket+'. Tekan Tambah untuk membuat soal pertama.</p></div>'; return; }
   el.innerHTML = soal.map((q,i) => `
     <div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-5 mb-3">
       <div class="flex items-start gap-3 mb-3">
@@ -1004,7 +1069,7 @@ async function renderSoalList() {
         <p class="font-semibold text-sm leading-relaxed flex-1">${sanitizeHTML(q.Pertanyaan)}</p>
         <span class="shrink-0 text-xs font-semibold text-text-muted">${q.Poin} poin</span>
       </div>
-      <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
         ${["A","B","C","D","E"].map(l => `<div class="text-sm px-3 py-2 rounded-xl border ${q.Kunci===l?'border-primary bg-primary-fixed/40 text-primary font-semibold':'border-border-subtle text-on-surface-variant'}">${l}. ${sanitizeHTML(q[l])}</div>`).join("")}
       </div>
       <div class="flex gap-1 justify-end">
@@ -1194,29 +1259,30 @@ function confirmHapusSoal(idx) {
 
 /* --- CONFIG --- */
 async function renderConfig() {
+  $("main-area").innerHTML = '<h2 class="font-display text-xl md:text-2xl font-bold mb-6">Config</h2><div class="skeleton h-80 rounded-2xl max-w-xl"></div>';
   const c = await call("getConfigAll", []);
   $("main-area").innerHTML = `
     <h2 class="font-display text-xl md:text-2xl font-bold mb-6">Config</h2>
     <div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-6 max-w-xl">
       <div class="space-y-5">
         <div><label class="block text-sm font-semibold mb-1">Judul Ulangan</label>
-          <input id="cfg-judul" value="${esc(c.JUDUL_ULANGAN)}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
-        <div class="flex gap-3">
+          <input id="cfg-judul" value="${esc(c.JUDUL_ULANGAN)}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/></div>
+        <div class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1"><label class="block text-sm font-semibold mb-1">Durasi (menit)</label>
-            <input id="cfg-durasi" type="number" min="1" value="${c.DURASI_MENIT}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+            <input id="cfg-durasi" type="number" min="1" value="${c.DURASI_MENIT}" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/></div>
           <div class="flex-1"><label class="block text-sm font-semibold mb-1">Token Master</label>
-            <input id="cfg-token" value="${esc(c.TOKEN_MASTER)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+            <input id="cfg-token" value="${esc(c.TOKEN_MASTER)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/></div>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1"><label class="block text-sm font-semibold mb-1">Admin PIN</label>
-            <input id="cfg-pin" value="${esc(c.ADMIN_PIN)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all"/></div>
+            <input id="cfg-pin" value="${esc(c.ADMIN_PIN)}" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/></div>
           <div class="flex-1"><label class="block text-sm font-semibold mb-1">Status Ulangan</label>
-            <button id="cfg-toggle" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all"></button></div>
+            <button id="cfg-toggle" class="relative w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all text-left" role="switch"></button></div>
         </div>
       </div>
       <div class="flex gap-3 mt-6">
-        <button onclick="handleResetData()" class="bg-secondary-container text-primary font-semibold rounded-full px-5 py-2.5 text-sm hover:bg-primary-fixed transition-colors">Reset Data</button>
-        <button onclick="handleSimpanConfig()" class="ml-auto bg-primary text-on-primary font-semibold rounded-full px-6 py-2.5 text-sm hover:bg-tertiary transition-colors shadow-soft">Simpan Config</button>
+        <button onclick="handleResetData()" class="bg-secondary-container text-primary font-semibold rounded-full px-5 py-2.5 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all">Reset Data</button>
+        <button onclick="handleSimpanConfig()" class="ml-auto bg-primary text-on-primary font-semibold rounded-full px-6 py-2.5 text-sm hover:bg-tertiary active:scale-[0.97] transition-all shadow-soft">Simpan Config</button>
       </div>
       <p class="text-xs text-text-muted mt-4">"Reset Data" akan mengembalikan siswa, soal, dan log ke data awal (demo). Config tidak di-reset.</p>
     </div>`;
@@ -1226,10 +1292,13 @@ async function renderConfig() {
 async function updateToggle() {
   const c = await call("getConfigAll", []);
   const on = c.ULANGAN_AKTIF === "YA";
-  $("cfg-toggle").textContent = on ? "Aktif" : "Nonaktif";
-  $("cfg-toggle").className = on
-    ? "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-emerald-500 bg-emerald-50 text-emerald-700"
-    : "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-outline-variant bg-gray-100 text-gray-500";
+  const btn = $("cfg-toggle");
+  btn.innerHTML = on
+    ? '<span class="w-5 h-5 rounded-full bg-emerald-500 shrink-0 transition-all"></span><span class="font-semibold">Aktif</span>'
+    : '<span class="w-5 h-5 rounded-full bg-gray-300 shrink-0 transition-all"></span><span class="font-semibold text-gray-500">Nonaktif</span>';
+  btn.className = on
+    ? "relative w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all text-left border-emerald-500 bg-emerald-50 text-emerald-700"
+    : "relative w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all text-left border-outline-variant bg-gray-100 text-gray-500";
 }
 async function handleToggleUlangan() {
   const res = await call("toggleUlanganGuru", []);
@@ -1261,10 +1330,11 @@ async function doResetData() {
 
 /* --- LOG AKTIVITAS --- */
 async function renderLog() {
+  $("main-area").innerHTML = '<h2 class="font-display text-xl md:text-2xl font-bold mb-6">Log Aktivitas</h2><div class="skeleton h-64 rounded-2xl"></div>';
   $("main-area").innerHTML = `
     <h2 class="font-display text-xl md:text-2xl font-bold mb-6">Log Aktivitas</h2>
     <div class="flex gap-2 mb-4">
-      <select id="log-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary transition-all">
+      <select id="log-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
         <option value="">Semua Event</option>
         <option value="Login">Login</option>
         <option value="Mulai">Mulai</option>
@@ -1276,7 +1346,8 @@ async function renderLog() {
         <option value="Submit">Submit</option>
       </select>
     </div>
-    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+    <div class="md:hidden space-y-3" id="log-cards"></div>
+    <div class="hidden md:block bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="border-b border-border-subtle">
@@ -1289,9 +1360,9 @@ async function renderLog() {
           <tbody id="log-body"></tbody>
         </table>
       </div>
-      <div class="p-4 text-center">
-        <button id="log-more" class="px-5 py-2 bg-secondary-container text-primary font-semibold rounded-full text-sm hover:bg-primary-fixed transition-colors">Muat lebih banyak</button>
-      </div>
+    </div>
+    <div class="text-center mt-4">
+      <button id="log-more" class="px-5 py-2 bg-secondary-container text-primary font-semibold rounded-full text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all">Muat lebih banyak</button>
     </div>`;
   logLimit = 50;
   $("log-filter").addEventListener("change", () => { logLimit = 50; renderLogTable(); });
@@ -1312,18 +1383,39 @@ async function renderLogTable() {
   const filter = $("log-filter").value;
   const rows = await call("getLogData", [filter || undefined, logLimit]);
   const tbody = $("log-body");
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-text-muted">Tidak ada log.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(l => {
-    const evCls = EVENT_CLS[l.Event] || "bg-gray-100 text-gray-600";
-    const evLabel = l.Event.replace(/_/g," ");
-    return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
-      <td class="px-4 py-3 text-xs text-on-surface-variant tnum">${fmtTs(l.Timestamp)}</td>
-      <td class="px-4 py-3 font-semibold tnum">${esc(l.NIS)}</td>
-      <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(l.Nama)||'-'}</td>
-      <td class="px-4 py-3"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${evCls}">${esc(evLabel)}</span></td>
-      <td class="px-4 py-3 text-xs text-on-surface-variant hidden md:table-cell max-w-[200px] truncate">${esc(l.Detail)||'-'}</td>
-    </tr>`;
-  }).join("");
+  const cards = $("log-cards");
+  if (!rows.length) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-text-muted">Tidak ada log.</td></tr>';
+    if (cards) cards.innerHTML = '<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">history</span><p class="mt-2 text-sm">Belum ada aktivitas.</p></div>';
+    return;
+  }
+  if (tbody) {
+    tbody.innerHTML = rows.map(l => {
+      const evCls = EVENT_CLS[l.Event] || "bg-gray-100 text-gray-600";
+      const evLabel = l.Event.replace(/_/g," ");
+      return `<tr class="border-b border-border-subtle/50 hover:bg-surface-container-low/50 transition-colors">
+        <td class="px-4 py-3 text-xs text-on-surface-variant tnum">${fmtTs(l.Timestamp)}</td>
+        <td class="px-4 py-3 font-semibold tnum">${esc(l.NIS)}</td>
+        <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(l.Nama)||'-'}</td>
+        <td class="px-4 py-3"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${evCls}">${esc(evLabel)}</span></td>
+        <td class="px-4 py-3 text-xs text-on-surface-variant hidden md:table-cell max-w-[200px] truncate">${esc(l.Detail)||'-'}</td>
+      </tr>`;
+    }).join("");
+  }
+  if (cards) {
+    cards.innerHTML = rows.map(l => {
+      const evCls = EVENT_CLS[l.Event] || "bg-gray-100 text-gray-600";
+      const evLabel = l.Event.replace(/_/g," ");
+      return `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-4">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${evCls}">${esc(evLabel)}</span>
+          <span class="text-xs text-on-surface-variant tnum shrink-0">${fmtTs(l.Timestamp)}</span>
+        </div>
+        <div class="text-xs font-semibold tnum">${esc(l.NIS)} <span class="text-on-surface-variant font-normal">/</span> <span class="text-on-surface-variant font-normal">${esc(l.Nama)||'-'}</span></div>
+        ${l.Detail ? '<div class="text-xs text-text-muted mt-1 truncate">'+esc(l.Detail)+'</div>' : ''}
+      </div>`;
+    }).join("");
+  }
 }
 
 /* ============================================================
@@ -1418,12 +1510,10 @@ function enterApp() {
 
   buildNav($("sidebar-nav"));
   buildNav($("drawer-nav"));
-  buildMobileTabs($("mobile-tabs"));
 
   ["sidebar-nav","drawer-nav"].forEach(id => {
     $(id).addEventListener("click", e => { const btn=e.target.closest("button[data-view]"); if(btn) switchView(btn.dataset.view); });
   });
-  $("mobile-tabs").addEventListener("click", e => { const btn=e.target.closest("button[data-view]"); if(btn) switchView(btn.dataset.view); });
 
   switchView("dashboard");
 }
