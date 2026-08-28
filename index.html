@@ -630,7 +630,7 @@ function renderSoal() {
   const body = $("exam-body");
   body.innerHTML = "";
   const OPT = ["A", "B", "C", "D", "E"];
-  state.soal.forEach(q => {
+  state.soal.forEach((q, i) => {
     const card = document.createElement("div");
     card.className = "bg-white border border-border-subtle rounded-2xl shadow-soft p-5 md:p-6 scroll-mt-32";
     card.id = "soal-" + q.No;
@@ -641,7 +641,7 @@ function renderSoal() {
     headRow.className = "flex items-start gap-2";
     const badge = document.createElement("span");
     badge.className = "inline-flex items-center justify-center w-8 h-8 bg-secondary-container text-primary font-display font-bold rounded-full text-sm shrink-0";
-    badge.textContent = q.No;
+    badge.textContent = i + 1;
     const qtext = document.createElement("div");
     qtext.className = "flex-1 min-w-0 font-semibold text-base md:text-lg";
     qtext.innerHTML = sanitizeHTML(q.Pertanyaan);
@@ -692,13 +692,13 @@ let currentSoal = null;
 function buildNavSoal() {
   const grid = $("nav-soal-grid");
   grid.innerHTML = "";
-  state.soal.forEach(q => {
+  state.soal.forEach((q, i) => {
     const pill = document.createElement("button");
     pill.type = "button";
     pill.dataset.no = q.No;
-    pill.setAttribute("aria-label", "Lompat ke soal " + q.No);
+    pill.setAttribute("aria-label", "Lompat ke soal " + (i + 1));
     pill.className = "h-10 rounded-lg text-xs font-bold tnum transition-all flex items-center justify-center min-w-0 whitespace-nowrap";
-    pill.textContent = q.No;
+    pill.textContent = i + 1;
     grid.appendChild(pill);
   });
 }

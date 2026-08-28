@@ -31,6 +31,9 @@ create table if not exists siswa (
   skor          integer
 );
 
+-- Kolom acak_seed untuk shuffle deterministik soal & opsi per siswa.
+alter table siswa add column if not exists acak_seed integer;
+
 create table if not exists soal_paket_a (
   id         uuid primary key default gen_random_uuid(),
   no         integer not null unique,
@@ -137,12 +140,37 @@ language sql security definer as $$
   select coalesce((select value from config where key = 'JUDUL_ULANGAN'), 'Ulangan Harian');
 $$;
 
+-- Helper: acak urutan opsi A-E secara deterministik per (seed, no soal).
+-- Return jsonb {"A":<isi opsi posisi 1>, "B":<posisi 2>, ...}.
+create or replace function _shuffle_options(seed_param int, no_param int, a text, b text, c text, d text, e text)
+returns jsonb language sql as $$
+  select jsonb_object_agg(pos, txt order by ord)
+  from (
+    select row_number() over (order by md5(l || no_param::text || seed_param::text)) - 1 as ord, txt
+    from (values ('a', a), ('b', b), ('c', c), ('d', d), ('e', e)) t(l, txt)
+  ) s
+  join (values (0,'A'),(1,'B'),(2,'C'),(3,'D'),(4,'E')) p(rn,pos) on s.ord = p.rn;
+$$;
+
+-- Helper: petakan huruf tampil (A-E hasil shuffle) kembali ke huruf asli (A-E).
+create or replace function _unshuffle_letter(seed_param int, no_param int, jawaban text)
+returns text language sql as $$
+  select upper(l)
+  from (
+    select row_number() over (order by md5(l || no_param::text || seed_param::text)) - 1 as ord, l
+    from (values ('a'),('b'),('c'),('d'),('e')) t(l)
+  ) s
+  join (values (0,'A'),(1,'B'),(2,'C'),(3,'D'),(4,'E')) p(rn,pos) on s.ord = p.rn
+  where p.pos = jawaban;
+$$;
+
 -- 3a. get_soal_siswa: soal TANPA kunci + jawaban tersimpan
 create or replace function get_soal_siswa(nis_param text)
 returns jsonb language plpgsql security definer as $$
 declare
   v_siswa   siswa%rowtype;
   v_paket   text;
+  v_seed    int;
   v_soal    jsonb;
   v_jawaban jsonb;
 begin
@@ -158,16 +186,27 @@ begin
     insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_paket || ' ditetapkan');
   end if;
 
+  -- Seed acak soal/opsi (deterministik per siswa; null = tanpa acak, data lama)
+  v_seed := v_siswa.acak_seed;
+  if v_seed is null then
+    v_seed := floor(random() * 1000000)::int;
+    update siswa set acak_seed = v_seed where id = v_siswa.id;
+  end if;
+
   if v_paket = 'B' then
-    select coalesce(jsonb_agg(jsonb_build_object(
-      'No', no, 'Pertanyaan', pertanyaan,
-      'A', a, 'B', b, 'C', c, 'D', d, 'E', e, 'Poin', poin
-    ) order by no), '[]'::jsonb) into v_soal from soal_paket_b;
+    select coalesce(jsonb_agg(
+      jsonb_build_object('No', no, 'Pertanyaan', pertanyaan, 'Poin', poin)
+      || case when v_seed is null then jsonb_build_object('A', a, 'B', b, 'C', c, 'D', d, 'E', e)
+              else _shuffle_options(v_seed, no, a, b, c, d, e) end
+      order by (case when v_seed is null then lpad(no::text, 8, '0') else md5(no::text || v_seed::text) end)
+    ), '[]'::jsonb) into v_soal from soal_paket_b;
   else
-    select coalesce(jsonb_agg(jsonb_build_object(
-      'No', no, 'Pertanyaan', pertanyaan,
-      'A', a, 'B', b, 'C', c, 'D', d, 'E', e, 'Poin', poin
-    ) order by no), '[]'::jsonb) into v_soal from soal_paket_a;
+    select coalesce(jsonb_agg(
+      jsonb_build_object('No', no, 'Pertanyaan', pertanyaan, 'Poin', poin)
+      || case when v_seed is null then jsonb_build_object('A', a, 'B', b, 'C', c, 'D', d, 'E', e)
+              else _shuffle_options(v_seed, no, a, b, c, d, e) end
+      order by (case when v_seed is null then lpad(no::text, 8, '0') else md5(no::text || v_seed::text) end)
+    ), '[]'::jsonb) into v_soal from soal_paket_a;
   end if;
 
   select coalesce(jsonb_agg(jsonb_build_object('No', no_soal, 'Jawaban', jawaban) order by no_soal),
@@ -238,12 +277,15 @@ returns jsonb language plpgsql security definer as $$
 declare
   v_siswa     siswa%rowtype;
   v_paket     text;
+  v_seed      int;
   v_total     integer := 0;
   v_earned    integer := 0;
   v_score     integer := 0;
   v_count     integer := 0;
   v_row       record;
   v_benar     integer := 0;
+  v_jwb       text;
+  v_orig      text;
 begin
   select * into v_siswa from siswa where nis = nis_param limit 1;
   if not found then
@@ -252,21 +294,36 @@ begin
   end if;
 
   v_paket := coalesce(nullif(v_siswa.paket_soal, ''), 'A');
+  v_seed := v_siswa.acak_seed;
 
   if v_paket = 'B' then
     for v_row in select * from soal_paket_b loop
       v_total := v_total + v_row.poin;  v_count := v_count + 1;
-      if exists (select 1 from jawaban
-                 where nis = nis_param and no_soal = v_row.no and jawaban = v_row.kunci) then
-        v_earned := v_earned + v_row.poin;
+      select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
+      if v_jwb is not null then
+        if v_seed is null then
+          v_orig := upper(v_jwb);
+        else
+          v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb);
+        end if;
+        if v_orig = v_row.kunci then
+          v_earned := v_earned + v_row.poin;
+        end if;
       end if;
     end loop;
   else
     for v_row in select * from soal_paket_a loop
       v_total := v_total + v_row.poin;  v_count := v_count + 1;
-      if exists (select 1 from jawaban
-                 where nis = nis_param and no_soal = v_row.no and jawaban = v_row.kunci) then
-        v_earned := v_earned + v_row.poin;
+      select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
+      if v_jwb is not null then
+        if v_seed is null then
+          v_orig := upper(v_jwb);
+        else
+          v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb);
+        end if;
+        if v_orig = v_row.kunci then
+          v_earned := v_earned + v_row.poin;
+        end if;
       end if;
     end loop;
   end if;
@@ -580,7 +637,8 @@ begin
   if not found then return jsonb_build_object('paket', ''); end if;
   if v_siswa.paket_soal is null or v_siswa.paket_soal = '' then
     v_siswa.paket_soal := case when random() < 0.5 then 'A' else 'B' end;
-    update siswa set paket_soal = v_siswa.paket_soal where id = v_siswa.id;
+    update siswa set paket_soal = v_siswa.paket_soal, acak_seed = floor(random() * 1000000)::int
+      where id = v_siswa.id;
     insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_siswa.paket_soal || ' ditetapkan');
   end if;
   return jsonb_build_object('paket', v_siswa.paket_soal);
@@ -603,7 +661,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'Siswa tidak ditemukan.');
   end if;
   if status_param = 'Belum Mulai' then
-    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null, skor = null
+    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null, skor = null, acak_seed = null
       where nis = nis_param;
   else
     update siswa set status = 'Selesai', waktu_selesai = now()
