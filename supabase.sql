@@ -672,7 +672,7 @@ $$;
 -- 3t. _next_paket_kode: kode huruf otomatis berikutnya (A, B, C, ... Z)
 create or replace function _next_paket_kode()
 returns text language sql as $$
-  select chr(ascii('A') + count(*))
+  select chr(ascii('A') + count(*)::int)
   from paket where kode ~ '^[A-Z]$'
 $$;
 
