@@ -342,6 +342,26 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
   </div>
 </div>
 
+<!-- Modal reset siswa konfirmasi -->
+<div id="modal-reset-siswa" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+  <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
+  <div class="relative bg-white border border-border-subtle rounded-t-2xl sm:rounded-2xl shadow-lift p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-6 w-full max-w-sm max-h-[90dvh] overflow-y-auto fade-in">
+    <div class="flex items-start gap-3 mb-3">
+      <div class="w-10 h-10 bg-error-container text-on-error-container rounded-full flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[22px]">warning</span>
+      </div>
+      <div>
+        <h3 class="font-display text-lg font-bold">Reset Siswa?</h3>
+        <p class="text-sm text-on-surface-variant mt-1" id="mrs-desc">Siswa akan direset. Paket soal akan diganti dan semua jawaban dihapus. Tindakan ini tidak dapat dibatalkan.</p>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button id="mrs-batal" class="flex-1 bg-secondary-container text-primary font-semibold rounded-full py-2.5 hover:bg-primary-fixed transition-colors">Batal</button>
+      <button id="mrs-reset" class="flex-1 bg-error text-on-error font-semibold rounded-full py-2.5 hover:opacity-90 transition-opacity">Ya, Reset</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal tambah / rename paket -->
 <div id="modal-paket" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
   <div class="fixed inset-0 bg-on-surface/40 backdrop-blur-sm"></div>
@@ -965,7 +985,7 @@ async function renderSiswa() {
   $("siswa-body").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
-    if (sel.value === "Belum Mulai" && !confirm("Reset siswa ini? Paket soal diacak ulang dan semua jawaban dihapus. Lanjutkan?")) { sel.value = sel.dataset.status; return; }
+    if (sel.value === "Belum Mulai") { confirmResetSiswa(sel); return; }
     const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
     if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
     else toast("Status diubah ke " + sel.value, "check_circle");
@@ -974,7 +994,7 @@ async function renderSiswa() {
   $("siswa-cards").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
-    if (sel.value === "Belum Mulai" && !confirm("Reset siswa ini? Paket soal diacak ulang dan semua jawaban dihapus. Lanjutkan?")) { sel.value = sel.dataset.status; return; }
+    if (sel.value === "Belum Mulai") { confirmResetSiswa(sel); return; }
     const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
     if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
     else toast("Status diubah ke " + sel.value, "check_circle");
@@ -1105,7 +1125,7 @@ async function renderSiswaTable() {
         <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
         <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
         <td class="px-4 py-3 text-center">
-          <select data-nis="${esc(s.NIS)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
+          <select data-nis="${esc(s.NIS)}" data-nama="${esc(s.Nama)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
         </td>
         <td class="px-4 py-3">
           <div class="flex items-center justify-center gap-1">
@@ -1132,7 +1152,7 @@ async function renderSiswaTable() {
             <div class="font-semibold text-sm truncate">${esc(s.Nama)}</div>
             <div class="text-xs text-text-muted tnum">${esc(s.NIS)} <span class="text-outline-variant">/</span> ${esc(s.Kelas)}</div>
           </div>
-          <select data-nis="${esc(s.NIS)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer shrink-0 ${statusCls}">${selOpts}</select>
+          <select data-nis="${esc(s.NIS)}" data-nama="${esc(s.Nama)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer shrink-0 ${statusCls}">${selOpts}</select>
         </div>
         <div class="flex items-center justify-end gap-1 mt-3 pt-2 border-t border-border-subtle/60">
           <button onclick="openModalSiswa(${origIdx})" class="p-2 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[20px]">edit</span></button>
@@ -1626,6 +1646,23 @@ async function doResetData() {
   await renderView();
 }
 
+let pendingResetSel = null;
+function confirmResetSiswa(sel) {
+  pendingResetSel = sel;
+  $("mrs-desc").textContent = "Reset " + sel.dataset.nama + " (" + sel.dataset.nis + ")? Paket soal akan diganti dan semua jawaban dihapus. Tindakan ini tidak dapat dibatalkan.";
+  $("modal-reset-siswa").classList.remove("hidden"); $("modal-reset-siswa").classList.add("flex");
+}
+async function doResetSiswa() {
+  const sel = pendingResetSel;
+  pendingResetSel = null;
+  $("modal-reset-siswa").classList.add("hidden"); $("modal-reset-siswa").classList.remove("flex");
+  if (!sel) return;
+  const res = await call("ubahStatusSiswa", [sel.dataset.nis, "Belum Mulai"]);
+  if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
+  else toast("Status diubah ke Belum Mulai", "check_circle");
+  await renderSiswaTable();
+}
+
 /* --- LOG AKTIVITAS --- */
 async function renderLog() {
   $("main-area").innerHTML = '<h2 class="font-display text-xl md:text-2xl font-bold mb-6">Log Aktivitas</h2><div class="skeleton h-64 rounded-2xl"></div>';
@@ -1864,6 +1901,11 @@ $("mhp-batal").addEventListener("click", () => { $("modal-hapus").classList.add(
 $("mhp-hapus").addEventListener("click", handleHapus);
 $("mrst-batal").addEventListener("click", () => { $("modal-reset").classList.add("hidden"); $("modal-reset").classList.remove("flex"); });
 $("mrst-reset").addEventListener("click", doResetData);
+$("mrs-batal").addEventListener("click", () => {
+  if (pendingResetSel) { pendingResetSel.value = pendingResetSel.dataset.status; pendingResetSel = null; }
+  $("modal-reset-siswa").classList.add("hidden"); $("modal-reset-siswa").classList.remove("flex");
+});
+$("mrs-reset").addEventListener("click", doResetSiswa);
 $("mp-batal").addEventListener("click", () => { $("modal-paket").classList.add("hidden"); $("modal-paket").classList.remove("flex"); });
 $("mp-simpan").addEventListener("click", simpanPaketModal);
 $("mp-nama").addEventListener("keydown", e => { if (e.key === "Enter") simpanPaketModal(); });
