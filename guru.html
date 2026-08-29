@@ -638,6 +638,8 @@ const SISWA_SORT_PROPS = { NIS: "NIS", Nama: "Nama", Kelas: "Kelas", Paket: "Pak
 const PAGE_SIZES = [10, 25, 50];
 let dashPage = 1, dashSize = 10;
 let siswaPage = 1, siswaSize = 10;
+let dashSortKey = "NIS";
+let dashSortDir = 1;
 
 function renderPagination(containerId, page, size, total, onChange) {
   const el = $(containerId);
@@ -720,18 +722,26 @@ async function renderDashboard() {
       <div class="flex gap-2 sm:ml-auto w-full sm:w-auto">
         <div class="relative flex-1 sm:flex-initial">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-          <input id="dash-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-52 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
+          <input id="dash-search" autocomplete="off" placeholder="Cari nama / NIS" class="w-full sm:w-56 pl-9 pr-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
         </div>
-        <select id="dash-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
-          <option value="">Semua Status</option>
-          <option value="Belum Mulai">Belum Mulai</option>
-          <option value="Mengerjakan">Mengerjakan</option>
-          <option value="Terkunci">Terkunci</option>
-          <option value="Selesai">Selesai</option>
-        </select>
-        <button onclick="exportHasilCSV()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-3 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all whitespace-nowrap">
-          <span class="material-symbols-outlined text-[18px]">download</span> Export Hasil
-        </button>
+        <div class="flex flex-wrap gap-2">
+          <select id="dash-paket" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
+            <option value="">Semua Paket</option>
+          </select>
+          <select id="dash-kelas" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
+            <option value="">Semua Kelas</option>
+          </select>
+          <select id="dash-filter" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
+            <option value="">Semua Status</option>
+            <option value="Belum Mulai">Belum Mulai</option>
+            <option value="Mengerjakan">Mengerjakan</option>
+            <option value="Terkunci">Terkunci</option>
+            <option value="Selesai">Selesai</option>
+          </select>
+          <button onclick="exportHasilCSV()" class="flex items-center gap-2 bg-secondary-container text-primary font-semibold rounded-full px-3 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all whitespace-nowrap">
+            <span class="material-symbols-outlined text-[18px]">download</span> Export Hasil
+          </button>
+        </div>
       </div>
     </div>
     <div class="md:hidden space-y-3" id="dash-cards"></div>
@@ -739,11 +749,11 @@ async function renderDashboard() {
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="border-b border-border-subtle">
-            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">NIS</th>
-            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant">Nama</th>
-            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Kelas</th>
-            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Paket</th>
-            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Status</th>
+            <th id="dash-th-nis" onclick="sortDashboard('NIS')" class="text-left px-4 py-3 font-semibold text-on-surface-variant cursor-pointer select-none whitespace-nowrap">NIS</th>
+            <th id="dash-th-nama" onclick="sortDashboard('Nama')" class="text-left px-4 py-3 font-semibold text-on-surface-variant cursor-pointer select-none whitespace-nowrap">Nama</th>
+            <th id="dash-th-kelas" onclick="sortDashboard('Kelas')" class="text-left px-4 py-3 font-semibold text-on-surface-variant cursor-pointer select-none hidden sm:table-cell">Kelas</th>
+            <th id="dash-th-paket" onclick="sortDashboard('Paket')" class="text-center px-4 py-3 font-semibold text-on-surface-variant cursor-pointer select-none whitespace-nowrap">Paket</th>
+            <th id="dash-th-status" onclick="sortDashboard('Status')" class="text-center px-4 py-3 font-semibold text-on-surface-variant cursor-pointer select-none whitespace-nowrap">Status</th>
             <th class="text-center px-4 py-3 font-semibold text-on-surface-variant hidden sm:table-cell">Skor</th>
             <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Token</th>
           </tr></thead>
@@ -759,11 +769,22 @@ async function renderDashboard() {
     const siswa = await call("getAllSiswa", []);
     const q = ($("dash-search").value||"").toLowerCase();
     const filter = $("dash-filter").value;
+    const paket = $("dash-paket").value;
+    const kelas = $("dash-kelas").value;
     let rows = siswa.filter(s => {
       if (filter && s.Status !== filter) return false;
+      if (paket && s.Paket_Soal !== paket) return false;
+      if (kelas && s.Kelas !== kelas) return false;
       if (q && !s.NIS.includes(q) && !s.Nama.toLowerCase().includes(q)) return false;
       return true;
     });
+    rows.sort((a,b) => {
+      const key = SISWA_SORT_PROPS[dashSortKey];
+      const av = String(a[key] != null ? a[key] : "").toLowerCase();
+      const bv = String(b[key] != null ? b[key] : "").toLowerCase();
+      return (av < bv ? -1 : av > bv ? 1 : 0) * dashSortDir;
+    });
+    updateDashSortIcons();
     const tbody = $("dash-body");
     const cards = $("dash-cards");
     if (!rows.length) {
@@ -819,8 +840,17 @@ async function renderDashboard() {
     }
     renderPagination("dash-pagination", dashPage, dashSize, indices.length, (p, s) => { if (s) dashSize = s; dashPage = p; renderTable(); });
   }
+  dashRenderTable = renderTable;
+  const dashKelasSet = [...new Set(siswa.map(s => s.Kelas).filter(Boolean))].sort();
+  const dashKelasSel = $("dash-kelas");
+  dashKelasSet.forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = k; dashKelasSel.appendChild(o); });
+  const dashPaketSet = [...new Set(siswa.map(s => s.Paket_Soal).filter(Boolean))].sort();
+  const dashPaketSel = $("dash-paket");
+  dashPaketSet.forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = "Paket " + k; dashPaketSel.appendChild(o); });
   $("dash-search").addEventListener("input", () => { dashPage = 1; renderTable(); });
   $("dash-filter").addEventListener("change", () => { dashPage = 1; renderTable(); });
+  $("dash-paket").addEventListener("change", () => { dashPage = 1; renderTable(); });
+  $("dash-kelas").addEventListener("change", () => { dashPage = 1; renderTable(); });
   renderTable();
   clearInterval(dashboardTimer);
   dashboardTimer = setInterval(async () => {
@@ -997,6 +1027,22 @@ function sortSiswa(key) {
   else { siswaSortKey = key; siswaSortDir = 1; }
   siswaPage = 1;
   renderSiswaTable();
+}
+function sortDashboard(key) {
+  if (dashSortKey === key) dashSortDir *= -1;
+  else { dashSortKey = key; dashSortDir = 1; }
+  dashPage = 1;
+  if (dashRenderTable) dashRenderTable();
+}
+function updateDashSortIcons() {
+  Object.keys(SISWA_SORT_PROPS).forEach(k => {
+    const th = $("dash-th-" + k.toLowerCase());
+    if (!th) return;
+    const arrow = dashSortKey === k ? (dashSortDir === 1 ? " ▲" : " ▼") : " ↕";
+    let span = th.querySelector(".sort-arrow");
+    if (!span) { span = document.createElement("span"); span.className = "sort-arrow text-xs opacity-60"; th.appendChild(span); }
+    span.textContent = arrow;
+  });
 }
 function updateSiswaSortIcons() {
   Object.keys(SISWA_SORT_PROPS).forEach(k => {
