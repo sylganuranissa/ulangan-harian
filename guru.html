@@ -162,6 +162,9 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
         <a href="index.html" class="flex items-center gap-2 text-sm text-text-muted hover:text-primary px-3 py-2">
           <span class="material-symbols-outlined text-[18px]">open_in_new</span> Halaman Siswa
         </a>
+        <button id="btn-logout-mobile" class="flex items-center gap-2 text-sm text-error hover:opacity-80 transition-opacity px-3 py-2 w-full text-left">
+          <span class="material-symbols-outlined text-[18px]">logout</span> Keluar
+        </button>
       </div>
     </div>
   </div>
@@ -1843,6 +1846,7 @@ function enterApp() {
   $("inp-pin").addEventListener("keydown", function(e) { if (e.key === "Enter") btnLogin.click(); });
 })();
 $("btn-logout").addEventListener("click", () => { sessionStorage.removeItem("ulis_guru"); sessionStorage.removeItem("ulis_pin"); adminPin = ""; location.reload(); });
+$("btn-logout-mobile").addEventListener("click", () => { sessionStorage.removeItem("ulis_guru"); sessionStorage.removeItem("ulis_pin"); adminPin = ""; location.reload(); });
 $("btn-mobile-menu").addEventListener("click", openDrawer);
 $("btn-close-drawer").addEventListener("click", closeDrawer);
 $("mobile-overlay").addEventListener("click", closeDrawer);
