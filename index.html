@@ -95,6 +95,8 @@
   @keyframes shimmer { 100% { transform: translateX(100%); } }
   .soal-img { max-width: 100%; max-height: 300px; border-radius: 12px; object-fit: contain; }
   .jawaban-img { max-width: 100%; max-height: 120px; border-radius: 8px; object-fit: contain; }
+  #exam-body img { cursor: zoom-in; }
+  #lightbox img { cursor: default; }
 </style>
 </head>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -305,6 +307,14 @@
       <button id="btn-konfirmasi-submit" class="flex-1 bg-error text-on-error font-semibold rounded-full py-2.5 hover:opacity-90 active:scale-[0.98] transition-all">Ya, Selesai</button>
     </div>
   </div>
+</div>
+
+<!-- Lightbox: perbesar gambar soal -->
+<div id="lightbox" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 fade-in" role="dialog" aria-modal="true" aria-label="Perbesar gambar">
+  <button id="lightbox-close" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors flex items-center justify-center">
+    <span class="material-symbols-outlined">close</span>
+  </button>
+  <img id="lightbox-img" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt=""/>
 </div>
 
 <script>
@@ -687,6 +697,18 @@ function renderSoal() {
   setupNavSoalIO();
 }
 
+function openLightbox(img) {
+  $("lightbox-img").src = img.currentSrc || img.src || "";
+  $("lightbox-img").alt = img.alt || "";
+  $("lightbox").classList.remove("hidden"); $("lightbox").classList.add("flex");
+  document.body.style.overflow = "hidden";
+}
+function closeLightbox() {
+  $("lightbox").classList.add("hidden"); $("lightbox").classList.remove("flex");
+  document.body.style.overflow = "";
+  $("lightbox-img").src = "";
+}
+
 let currentSoal = null;
 
 function buildNavSoal() {
@@ -944,9 +966,17 @@ $("nav-soal-grid").addEventListener("click", e => {
 });
 
 $("exam-body").addEventListener("click", e => {
+  const img = e.target.closest("img");
+  if (img) { openLightbox(img); return; }
   const btn = e.target.closest(".option");
   if (!btn) return;
   pilihJawaban(parseInt(btn.dataset.no, 10), btn.dataset.val);
+});
+$("lightbox").addEventListener("click", e => {
+  if (e.target === $("lightbox") || e.target.closest("#lightbox-close")) closeLightbox();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("lightbox").classList.contains("hidden")) closeLightbox();
 });
 
 /* Resume otomatis bila NIS tersimpan di sessionStorage */
