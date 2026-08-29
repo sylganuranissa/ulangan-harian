@@ -658,9 +658,12 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'Siswa tidak ditemukan.');
   end if;
   if status_param = 'Belum Mulai' then
-    -- Reset penuh: paket diacak ulang saat login berikutnya + jawaban lama dihapus
-    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null,
-                     skor = null, acak_seed = null, paket_soal = ''
+    -- Reset penuh: pilih paket LAIN (pastikan beda dari sebelumnya), jawaban lama dihapus
+    update siswa s set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null,
+                       skor = null, acak_seed = floor(random() * 1000000)::int,
+                       paket_soal = coalesce(
+                         (select kode from paket where kode <> s.paket_soal order by random() limit 1),
+                         s.paket_soal)
       where nis = nis_param;
     delete from jawaban where nis = nis_param;
   else
