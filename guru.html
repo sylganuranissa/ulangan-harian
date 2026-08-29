@@ -1003,8 +1003,11 @@ async function renderSiswa() {
   await renderSiswaTable();
 }
 function parseCSV(text) {
-  return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line =>
-    line.split(",").map(f => f.trim().replace(/^"|"$/g, "").replace(/""/g, '"'))
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const delim = lines.some(l => l.includes(';')) ? ';' : ',';
+  return lines.map(line =>
+    line.split(delim).map(f => f.trim().replace(/^"|"$/g, "").replace(/""/g, '"'))
   ).filter(r => r.some(f => f !== ""));
 }
 async function importSiswaCSV(input) {
@@ -1319,7 +1322,7 @@ async function importSoalCSV(input) {
   const file = input.files && input.files[0];
   if (!file) return;
   const text = await file.text();
-  let rows = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => line.split(",").map(f => f.trim().replace(/^"|"$/g, "").replace(/""/g, '"')));
+  let rows = parseCSV(text);
   if (!rows.length) { toast("CSV kosong", "error"); return; }
   if (rows[0][0].toLowerCase() === "no") rows = rows.slice(1);
   let ok = 0, fail = 0;
