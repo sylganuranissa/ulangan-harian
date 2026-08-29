@@ -660,7 +660,7 @@ begin
   if status_param = 'Belum Mulai' then
     -- Reset penuh: paket diacak ulang saat login berikutnya + jawaban lama dihapus
     update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null,
-                     skor = null, acak_seed = null, paket_soal = null
+                     skor = null, acak_seed = null, paket_soal = ''
       where nis = nis_param;
     delete from jawaban where nis = nis_param;
   else
