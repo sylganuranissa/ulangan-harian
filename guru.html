@@ -965,6 +965,7 @@ async function renderSiswa() {
   $("siswa-body").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
+    if (sel.value === "Belum Mulai" && !confirm("Reset siswa ini? Paket soal diacak ulang dan semua jawaban dihapus. Lanjutkan?")) { sel.value = sel.dataset.status; return; }
     const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
     if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
     else toast("Status diubah ke " + sel.value, "check_circle");
@@ -973,6 +974,7 @@ async function renderSiswa() {
   $("siswa-cards").addEventListener("change", async e => {
     const sel = e.target.closest("select[data-nis]");
     if (!sel) return;
+    if (sel.value === "Belum Mulai" && !confirm("Reset siswa ini? Paket soal diacak ulang dan semua jawaban dihapus. Lanjutkan?")) { sel.value = sel.dataset.status; return; }
     const res = await call("ubahStatusSiswa", [sel.dataset.nis, sel.value]);
     if (!res.ok) toast(res.reason || "Gagal ubah status", "error");
     else toast("Status diubah ke " + sel.value, "check_circle");
@@ -1103,7 +1105,7 @@ async function renderSiswaTable() {
         <td class="px-4 py-3 hidden sm:table-cell text-on-surface-variant">${esc(s.Kelas)}</td>
         <td class="px-4 py-3 text-center"><span class="inline-block w-7 h-7 rounded-full ${s.Paket_Soal==='A'?'bg-secondary-container text-primary':'bg-tertiary-container text-on-tertiary-container'} text-xs font-bold leading-7">${esc(s.Paket_Soal)||'-'}</span></td>
         <td class="px-4 py-3 text-center">
-          <select data-nis="${esc(s.NIS)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
+          <select data-nis="${esc(s.NIS)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer ${statusCls}">${selOpts}</select>
         </td>
         <td class="px-4 py-3">
           <div class="flex items-center justify-center gap-1">
@@ -1130,7 +1132,7 @@ async function renderSiswaTable() {
             <div class="font-semibold text-sm truncate">${esc(s.Nama)}</div>
             <div class="text-xs text-text-muted tnum">${esc(s.NIS)} <span class="text-outline-variant">/</span> ${esc(s.Kelas)}</div>
           </div>
-          <select data-nis="${esc(s.NIS)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer shrink-0 ${statusCls}">${selOpts}</select>
+          <select data-nis="${esc(s.NIS)}" data-status="${esc(s.Status)}" class="text-xs font-semibold px-2 py-1.5 rounded-full border cursor-pointer shrink-0 ${statusCls}">${selOpts}</select>
         </div>
         <div class="flex items-center justify-end gap-1 mt-3 pt-2 border-t border-border-subtle/60">
           <button onclick="openModalSiswa(${origIdx})" class="p-2 rounded-lg hover:bg-secondary-container/50 transition-colors text-on-surface-variant hover:text-primary" title="Edit"><span class="material-symbols-outlined text-[20px]">edit</span></button>

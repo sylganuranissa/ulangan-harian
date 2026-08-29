@@ -658,8 +658,11 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'Siswa tidak ditemukan.');
   end if;
   if status_param = 'Belum Mulai' then
-    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null, skor = null, acak_seed = null
+    -- Reset penuh: paket diacak ulang saat login berikutnya + jawaban lama dihapus
+    update siswa set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null,
+                     skor = null, acak_seed = null, paket_soal = null
       where nis = nis_param;
+    delete from jawaban where nis = nis_param;
   else
     update siswa set status = 'Selesai', waktu_selesai = now()
       where nis = nis_param;
