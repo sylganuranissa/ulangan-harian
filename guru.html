@@ -1358,7 +1358,13 @@ function openModalPaket(isEdit) {
     $("mp-nama").value = tab ? tab.Nama : "";
     $("modal-paket-title").textContent = "Ganti Nama Paket";
   } else {
-    const next = String.fromCharCode(65 + paketList.length);
+    const used = new Set(paketList.map(p => p.Kode));
+    let next = "";
+    for (let i = 0; i < 26; i++) {
+      const c = String.fromCharCode(65 + i);
+      if (!used.has(c)) { next = c; break; }
+    }
+    if (!next) { toast("Maksimal 26 paket (A-Z).", "error"); return; }
     $("mp-kode").value = next;
     $("mp-kode").disabled = true;
     $("mp-nama").value = "Paket " + next;
@@ -1372,7 +1378,7 @@ async function simpanPaketModal() {
   setErr($("err-paket"));
   if (!nama) { setErr($("err-paket"), "Nama paket wajib diisi."); return; }
   const existing = paketList.find(p => p.Kode === kode);
-  const urutan = existing ? existing.Urutan : (paketList.length + 1);
+  const urutan = existing ? existing.Urutan : (Math.max(0, ...paketList.map(p => p.Urutan || 0)) + 1);
   const res = await call("simpanPaket", [kode, nama, urutan]);
   if (!res.ok) { setErr($("err-paket"), res.reason || "Gagal simpan paket."); return; }
   $("modal-paket").classList.add("hidden"); $("modal-paket").classList.remove("flex");
