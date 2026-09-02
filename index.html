@@ -258,8 +258,8 @@
 </main>
 
 <!-- ============ SCREEN: RESULT ============ -->
-<main id="screen-result" class="hidden min-h-[100dvh] flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-md fade-in">
+<main id="screen-result" class="hidden min-h-[100dvh] px-4 py-10 overflow-y-auto">
+  <div class="w-full max-w-md mx-auto fade-in">
     <div class="bg-white/80 backdrop-blur-md border border-border-subtle rounded-2xl shadow-lift p-6 md:p-8 text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-secondary-container text-primary rounded-2xl mb-5">
         <span class="material-symbols-outlined text-4xl">celebration</span>
@@ -284,8 +284,13 @@
         </div>
       </div>
 
-      <p class="text-xs text-text-muted mt-6">Kamu tidak dapat mengerjakan ulang. Status telah dicatat sebagai selesai.</p>
+      <button id="btn-lihat-review" class="mt-6 w-full flex items-center justify-center gap-2 bg-secondary-container text-primary font-semibold rounded-full py-3 hover:bg-primary-fixed active:scale-[0.98] transition-all">
+        <span class="material-symbols-outlined text-[20px]">visibility</span>
+        <span id="btn-review-label">Lihat Pembahasan</span>
+      </button>
     </div>
+
+    <div id="result-review" class="hidden mt-6 space-y-3"></div>
   </div>
 </main>
 
@@ -438,6 +443,14 @@ const api = {
     };
   },
 
+  getHasil: async (nis) => {
+    const kosong = { error: "Belum selesai." };
+    if (!SUPABASE_READY) return kosong;
+    const { data, error } = await SUPABASE_READY.rpc("get_hasil_siswa", { nis_param: nis });
+    if (error) { console.error(error); return kosong; }
+    return data || kosong;
+  },
+
   getSession: async (nis) => {
     if (!SUPABASE_READY) return { found: false };
     const { data, error } = await SUPABASE_READY.from("siswa").select("*").eq("nis", nis).maybeSingle();
@@ -463,7 +476,8 @@ const state = {
   jawaban: {},
   timerId: null,
   locked: false,
-  submitted: false
+  submitted: false,
+  hasilData: null
 };
 
 /* ============================================================
@@ -933,9 +947,46 @@ async function submitUlangan(isAuto) {
   $("result-skor").textContent = res.skor;
   $("result-nama").textContent = state.nama;
   $("result-paket").textContent = "Paket " + res.paket;
-  const benar = Math.round((res.skor / 100) * res.totalSoal);
-  $("result-detail").textContent = benar + " dari " + res.totalSoal + " soal benar";
+  $("result-detail").textContent = res.benar + " dari " + res.totalSoal + " soal benar";
+  state.hasilData = null;
+  api.getHasil(state.nis).then(d => { if (d && d.hasil) { state.hasilData = d; renderReview(d); } });
   showScreen("screen-result");
+}
+
+function renderReview(d) {
+  const OPT = ["A", "B", "C", "D", "E"];
+  const box = $("result-review");
+  box.innerHTML = (d.hasil || []).map((q, i) => {
+    const benar = q.Benar === true;
+    const tidak = !q.Jawaban;
+    const statusCls = tidak ? "bg-gray-100 text-gray-600" : (benar ? "bg-emerald-100 text-emerald-700" : "bg-error-container text-on-error-container");
+    const statusTxt = tidak ? "Tidak dijawab" : (benar ? "Benar" : "Salah");
+    const opts = OPT.map(letter => {
+      const val = q.Opsi && q.Opsi[letter] ? q.Opsi[letter] : "";
+      let cls = "border-border-subtle bg-white text-on-surface";
+      let icon = "";
+      const isKunci = letter === q.Kunci;
+      const isJawaban = letter === q.Jawaban;
+      if (isKunci) { cls = "border-emerald-500 bg-emerald-50 text-emerald-800"; icon = '<span class="material-symbols-outlined text-[18px] ml-auto text-emerald-600">check_circle</span>'; }
+      else if (isJawaban && !benar) { cls = "border-error bg-error-container/40 text-on-surface"; icon = '<span class="material-symbols-outlined text-[18px] ml-auto text-error">cancel</span>'; }
+      return `<div class="flex items-center gap-3 border rounded-xl px-4 py-2.5 ${cls}">
+        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full border-2 border-current text-xs font-bold shrink-0 opacity-70">${letter}</span>
+        <span class="text-sm font-medium min-w-0">${sanitizeHTML(val)}</span>
+        ${icon}
+      </div>`;
+    }).join("");
+    return `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-5">
+      <div class="flex items-start gap-2 mb-3">
+        <span class="inline-flex items-center justify-center w-8 h-8 bg-secondary-container text-primary font-display font-bold rounded-full text-sm shrink-0">${i + 1}</span>
+        <div class="flex-1 min-w-0 font-semibold text-base">${sanitizeHTML(q.Pertanyaan)}</div>
+        <div class="flex flex-col items-end gap-1 shrink-0">
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${statusCls}">${statusTxt}</span>
+          <span class="text-xs text-text-muted">${q.Poin} poin</span>
+        </div>
+      </div>
+      <div class="space-y-2">${opts}</div>
+    </div>`;
+  }).join("");
 }
 
 /* ============================================================
@@ -959,6 +1010,13 @@ $("btn-batal-submit").addEventListener("click", closeSubmitModal);
 $("btn-konfirmasi-submit").addEventListener("click", () => submitUlangan(false));
 $("btn-lanjut").addEventListener("click", lanjutkan);
 $("inp-unlock-token").addEventListener("keydown", e => { if (e.key === "Enter") lanjutkan(); });
+$("btn-lihat-review").addEventListener("click", () => {
+  const box = $("result-review");
+  const open = box.classList.contains("hidden");
+  box.classList.toggle("hidden");
+  $("btn-review-label").textContent = open ? "Sembunyikan Pembahasan" : "Lihat Pembahasan";
+  if (open && !box.innerHTML && state.hasilData) renderReview(state.hasilData);
+});
 $("btn-nav-soal").addEventListener("click", toggleNavSoal);
 $("nav-soal-grid").addEventListener("click", e => {
   const pill = e.target.closest("button[data-no]");

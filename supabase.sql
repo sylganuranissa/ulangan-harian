@@ -409,7 +409,64 @@ begin
 end;
 $$;
 
--- 3d. lock_ulangan_siswa: set Terkunci (token unlock pakai token bersama)
+-- 3d. get_hasil_siswa: per-soal review (hanya jika status Selesai)
+create or replace function get_hasil_siswa(nis_param text)
+returns jsonb language plpgsql security definer as $$
+declare
+  v_siswa siswa%rowtype;
+  v_paket text;
+  v_seed  int;
+  v_items jsonb := '[]'::jsonb;
+  v_row   record;
+  v_jwb   text;
+  v_orig  text;
+  v_ok    boolean;
+  v_kd    text;
+  v_d     text;
+begin
+  select * into v_siswa from siswa where nis = nis_param limit 1;
+  if not found then
+    return jsonb_build_object('error', 'Siswa tidak ditemukan.');
+  end if;
+  if v_siswa.status <> 'Selesai' then
+    return jsonb_build_object('error', 'Belum selesai.');
+  end if;
+  v_paket := coalesce(nullif(v_siswa.paket_soal, ''), 'A');
+  v_seed := v_siswa.acak_seed;
+
+  for v_row in select * from soal where paket = v_paket order by no loop
+    select jawaban into v_jwb from jawaban where nis = nis_param and no_soal = v_row.no;
+
+    if v_jwb is not null then
+      if v_seed is null then v_orig := upper(v_jwb); else v_orig := _unshuffle_letter(v_seed, v_row.no, v_jwb); end if;
+      v_ok := (v_orig = v_row.kunci);
+    else
+      v_ok := false;
+    end if;
+
+    v_kd := v_row.kunci;
+    if v_seed is not null then
+      for v_d in select * from (values ('A'),('B'),('C'),('D'),('E')) t(x) loop
+        if _unshuffle_letter(v_seed, v_row.no, v_d) = v_row.kunci then
+          v_kd := v_d; exit;
+        end if;
+      end loop;
+    end if;
+
+    v_items := v_items || jsonb_build_object('No', v_row.no, 'Pertanyaan', v_row.pertanyaan,
+      'Poin', v_row.poin,
+      'Opsi', case when v_seed is null then jsonb_build_object('A',v_row.a,'B',v_row.b,'C',v_row.c,'D',v_row.d,'E',v_row.e)
+                   else _shuffle_options(v_seed, v_row.no, v_row.a, v_row.b, v_row.c, v_row.d, v_row.e) end,
+      'Jawaban', v_jwb, 'Kunci', v_kd, 'Benar', v_ok);
+  end loop;
+
+  return jsonb_build_object(
+    'siswa', jsonb_build_object('nama', v_siswa.nama, 'nis', v_siswa.nis, 'paket', v_paket, 'skor', v_siswa.skor),
+    'hasil', v_items);
+end;
+$$;
+
+-- 3e. lock_ulangan_siswa: set Terkunci (token unlock pakai token bersama)
 create or replace function lock_ulangan_siswa(nis_param text)
 returns jsonb language plpgsql security definer as $$
 declare
