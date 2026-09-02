@@ -461,7 +461,8 @@ end;
 $$;
 
 -- 3f. get_token_unlock: ambil token unlock bersama (auto-rotasi jika expired)
-drop function if exists generate_token_siswa;
+drop function if exists generate_token_siswa(text);
+drop function if exists generate_token_siswa(text, text);
 create or replace function get_token_unlock(pin_param text)
 returns jsonb language plpgsql security definer as $$
 declare
