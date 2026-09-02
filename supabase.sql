@@ -182,6 +182,50 @@ language sql security definer as $$
   select coalesce((select value from config where key = 'JUDUL_ULANGAN'), 'Ulangan Harian');
 $$;
 
+-- Helper: buat token acak 6 karakter (tanpa I,O,0,1 supaya mudah dibaca)
+create or replace function _gen_token() returns text
+language plpgsql as $$
+declare v_token text := ''; v_chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; i int;
+begin
+  for i in 1..6 loop
+    v_token := v_token || substr(v_chars, floor(random() * length(v_chars))::int + 1, 1);
+  end loop;
+  return v_token;
+end;
+$$;
+
+-- Helper: ambil token unlock bersama dari config. Jika sudah lewat 5 menit,
+-- rotasi otomatis: token lama pindah ke TOKEN_UNLOCK_PREV, token baru dibuat.
+create or replace function _token_unlock() returns text
+language plpgsql as $$
+declare
+  v_tok text; v_at bigint; v_prev text; v_now bigint;
+begin
+  select value into v_tok from config where key = 'TOKEN_UNLOCK';
+  select value into v_at  from config where key = 'TOKEN_UNLOCK_AT';
+  if v_tok is null then
+    v_tok := _gen_token();
+    insert into config (key, value) values ('TOKEN_UNLOCK', v_tok)
+      on conflict (key) do update set value = excluded.value;
+    v_at := (extract(epoch from now()))::bigint;
+    insert into config (key, value) values ('TOKEN_UNLOCK_AT', v_at::text)
+      on conflict (key) do update set value = excluded.value;
+  end if;
+  v_now := (extract(epoch from now()))::bigint;
+  if v_now - coalesce(v_at, 0) > 300 then
+    v_prev := v_tok;
+    v_tok := _gen_token();
+    update config set value = v_prev where key = 'TOKEN_UNLOCK_PREV';
+    if not found then
+      insert into config (key, value) values ('TOKEN_UNLOCK_PREV', v_prev);
+    end if;
+    update config set value = v_tok where key = 'TOKEN_UNLOCK';
+    update config set value = v_now::text where key = 'TOKEN_UNLOCK_AT';
+  end if;
+  return v_tok;
+end;
+$$;
+
 -- Helper: acak urutan opsi A-E secara deterministik per (seed, no soal).
 -- Return jsonb {"A":<isi opsi posisi 1>, "B":<posisi 2>, ...}.
 create or replace function _shuffle_options(seed_param int, no_param int, a text, b text, c text, d text, e text)
@@ -260,12 +304,14 @@ begin
 end;
 $$;
 
--- 3b. validasi_token_siswa: cek token master / token aktif, mulai sesi
+-- 3b. validasi_token_siswa: cek token master / token unlock bersama, mulai sesi
 create or replace function validasi_token_siswa(nis_param text, token_param text)
 returns jsonb language plpgsql security definer as $$
 declare
   v_siswa  siswa%rowtype;
   v_master text;
+  v_unlock text;
+  v_prev   text;
 begin
   select * into v_siswa from siswa where nis = nis_param limit 1;
   if not found then
@@ -289,16 +335,19 @@ begin
       'paket', coalesce(nullif(v_siswa.paket_soal, ''), 'A'));
   end if;
 
-  if token_param <> '' and token_param = v_siswa.token_aktif
-     and v_siswa.status in ('Terkunci', 'Belum Mulai') then
-    update siswa set status = 'Mengerjakan',
-                     waktu_mulai = coalesce(waktu_mulai, now())
-      where id = v_siswa.id;
-    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Mulai', 'Login dengan token aktif');
-    select * into v_siswa from siswa where id = v_siswa.id;
-    return jsonb_build_object('valid', true, 'durasi', _durasi_menit(),
-      'waktuMulai', (extract(epoch from v_siswa.waktu_mulai) * 1000)::bigint,
-      'paket', coalesce(nullif(v_siswa.paket_soal, ''), 'A'));
+  if v_siswa.status = 'Terkunci' then
+    v_unlock := _token_unlock();
+    select value into v_prev from config where key = 'TOKEN_UNLOCK_PREV';
+    if token_param <> '' and (token_param = v_unlock or token_param = v_prev) then
+      update siswa set status = 'Mengerjakan',
+                       waktu_mulai = coalesce(waktu_mulai, now())
+        where id = v_siswa.id;
+      insert into log_aktivitas (nis, event, detail) values (nis_param, 'Mulai', 'Login dengan token unlock');
+      select * into v_siswa from siswa where id = v_siswa.id;
+      return jsonb_build_object('valid', true, 'durasi', _durasi_menit(),
+        'waktuMulai', (extract(epoch from v_siswa.waktu_mulai) * 1000)::bigint,
+        'paket', coalesce(nullif(v_siswa.paket_soal, ''), 'A'));
+    end if;
   end if;
 
   return jsonb_build_object('valid', false, 'reason', 'Token salah. Cek kembali token dari gurumu.');
@@ -360,27 +409,20 @@ begin
 end;
 $$;
 
--- 3d. lock_ulangan_siswa: set Terkunci + generate token baru
+-- 3d. lock_ulangan_siswa: set Terkunci (token unlock pakai token bersama)
 create or replace function lock_ulangan_siswa(nis_param text)
 returns jsonb language plpgsql security definer as $$
 declare
   v_siswa siswa%rowtype;
-  v_token text := '';
-  v_chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  i int;
 begin
   select * into v_siswa from siswa where nis = nis_param limit 1;
   if not found or v_siswa.status = 'Selesai' then
     return jsonb_build_object('locked', false);
   end if;
 
-  for i in 1..6 loop
-    v_token := v_token || substr(v_chars, floor(random() * length(v_chars))::int + 1, 1);
-  end loop;
-
-  update siswa set status = 'Terkunci', token_aktif = v_token where id = v_siswa.id;
+  update siswa set status = 'Terkunci' where id = v_siswa.id;
   insert into log_aktivitas (nis, event, detail) values (nis_param, 'Tab_Switch_Terdeteksi', 'Berpindah tab/window');
-  insert into log_aktivitas (nis, event, detail) values (nis_param, 'Terkunci', 'Token baru: ' || v_token);
+  insert into log_aktivitas (nis, event, detail) values (nis_param, 'Terkunci', 'Menunggu token unlock');
 
   return jsonb_build_object('locked', true);
 end;
@@ -397,27 +439,75 @@ begin
     return jsonb_build_object('valid', false, 'reason', 'Siswa tidak ditemukan.');
   end if;
 
-  if v_siswa.status = 'Terkunci' and token_param = v_siswa.token_aktif then
-    update siswa set status = 'Mengerjakan' where id = v_siswa.id;
-    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Lanjut_Mengerjakan', 'Unlock dengan token baru');
-    return jsonb_build_object('valid', true, 'durasi', _durasi_menit(),
-      'waktuMulai', case when v_siswa.waktu_mulai is null then null
-                         else (extract(epoch from v_siswa.waktu_mulai) * 1000)::bigint end,
-      'paket', coalesce(nullif(v_siswa.paket_soal, ''), 'A'));
+  if v_siswa.status = 'Terkunci' then
+    declare
+      v_unlock text; v_prev text;
+    begin
+      v_unlock := _token_unlock();
+      select value into v_prev from config where key = 'TOKEN_UNLOCK_PREV';
+      if token_param <> '' and (token_param = v_unlock or token_param = v_prev) then
+        update siswa set status = 'Mengerjakan' where id = v_siswa.id;
+        insert into log_aktivitas (nis, event, detail) values (nis_param, 'Lanjut_Mengerjakan', 'Unlock dengan token bersama');
+        return jsonb_build_object('valid', true, 'durasi', _durasi_menit(),
+          'waktuMulai', case when v_siswa.waktu_mulai is null then null
+                             else (extract(epoch from v_siswa.waktu_mulai) * 1000)::bigint end,
+          'paket', coalesce(nullif(v_siswa.paket_soal, ''), 'A'));
+      end if;
+    end;
   end if;
 
   return jsonb_build_object('valid', false, 'reason', 'Token salah. Minta token baru ke gurumu.');
 end;
 $$;
 
--- 3f. cek_pin_admin: validasi PIN guru (ADMIN_PIN tidak pernah keluar)
+-- 3f. get_token_unlock: ambil token unlock bersama (auto-rotasi jika expired)
+drop function if exists generate_token_siswa;
+create or replace function get_token_unlock(pin_param text)
+returns jsonb language plpgsql security definer as $$
+declare
+  v_tok text; v_at bigint;
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('error', 'unauthorized');
+  end if;
+  v_tok := _token_unlock();
+  select value into v_at from config where key = 'TOKEN_UNLOCK_AT';
+  return jsonb_build_object('ok', true, 'token', v_tok,
+    'sisaDetik', greatest(0, 300 - ((extract(epoch from now())::bigint - coalesce(v_at::bigint, 0)))));
+end;
+$$;
+
+-- 3g. reset_token_unlock: force rotasi token unlock sekarang
+create or replace function reset_token_unlock(pin_param text)
+returns jsonb language plpgsql security definer as $$
+declare
+  v_tok text; v_prev text; v_now bigint;
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('error', 'unauthorized');
+  end if;
+  select value into v_prev from config where key = 'TOKEN_UNLOCK';
+  v_tok := _gen_token();
+  v_now := (extract(epoch from now()))::bigint;
+  update config set value = v_prev where key = 'TOKEN_UNLOCK_PREV';
+  if not found then
+    insert into config (key, value) values ('TOKEN_UNLOCK_PREV', v_prev);
+  end if;
+  update config set value = v_tok where key = 'TOKEN_UNLOCK';
+  update config set value = v_now::text where key = 'TOKEN_UNLOCK_AT';
+  return jsonb_build_object('ok', true, 'token', v_tok,
+    'sisaDetik', 300);
+end;
+$$;
+
+-- 3h. cek_pin_admin: validasi PIN guru (ADMIN_PIN tidak pernah keluar)
 create or replace function cek_pin_admin(pin_param text)
 returns jsonb language sql security definer as $$
   select jsonb_build_object('valid',
     pin_param = (select value from config where key = 'ADMIN_PIN'));
 $$;
 
--- 3g. get_config_siswa: config tanpa ADMIN_PIN & TOKEN_MASTER
+-- 3i. get_config_siswa: config tanpa ADMIN_PIN & TOKEN_MASTER
 create or replace function get_config_siswa()
 returns jsonb language sql security definer as $$
   select coalesce(jsonb_object_agg(key, value), '{}'::jsonb)
@@ -555,6 +645,8 @@ begin
   delete from siswa where true;
   delete from soal where true;
   delete from paket where true;
+
+  perform _token_unlock();
 
   insert into paket (kode, nama, urutan) values
     ('A', 'Paket A', 1),
@@ -815,6 +907,9 @@ insert into config (key, value) values
   ('ULANGAN_AKTIF', 'YA'),
   ('ADMIN_PIN',     '9B4R2M')
 on conflict (key) do nothing;
+
+-- Pastikan token unlock bersama ada (auto-rotasi tiap 5 menit).
+select _token_unlock();
 
 insert into siswa (nis, nama, kelas, paket_soal, status) values
   ('001234', 'Budi Santoso',  'XII IPA 1', 'A', 'Belum Mulai'),
