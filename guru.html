@@ -190,6 +190,13 @@ body{font-family:"Inter",sans-serif;-webkit-font-smoothing:antialiased}
         <label class="block text-sm font-semibold mb-1">Kelas</label>
         <input id="ms-kelas" autocomplete="off" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all" placeholder="Contoh: XII IPA 1"/>
       </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Paket Soal</label>
+        <select id="ms-paket" class="w-full px-4 py-2.5 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus:shadow-glow transition-all">
+          <option value="">Otomatis (ikut mapping kelas)</option>
+        </select>
+        <p class="text-xs text-text-muted mt-1.5">Biarkan "Otomatis" agar sistem pilih paket dari mapping kelas saat login. Pilih manual untuk override.</p>
+      </div>
       <p id="err-siswa" class="hidden text-sm text-error"></p>
     </div>
     <div class="flex gap-3 mt-6">
@@ -433,10 +440,10 @@ const API = {
     return { total, mengerjakan, terkunci, selesai, avgSkor, siswa };
   },
 
-  simpanSiswa: async (nis, nama, kelas, editIdx) => {
+  simpanSiswa: async (nis, nama, kelas, editIdx, paket) => {
     if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
     const editNis = (editIdx !== undefined && editIdx >= 0) ? ((await API.getAllSiswa())[editIdx]?.NIS || "") : "";
-    const { data, error } = await SUPABASE_READY.rpc("simpan_siswa_guru", { nis_param: nis, nama_param: nama, kelas_param: kelas, edit_nis_param: editNis, pin_param: adminPin });
+    const { data, error } = await SUPABASE_READY.rpc("simpan_siswa_guru", { nis_param: nis, nama_param: nama, kelas_param: kelas, edit_nis_param: editNis, pin_param: adminPin, paket_param: paket || "" });
     if (error) { console.error(error); return { ok: false, reason: error.message }; }
     if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false, reason: "Sesi berakhir." }; }
     return data || { ok: false, reason: "Gagal simpan siswa." };
@@ -529,6 +536,22 @@ const API = {
     if (error) { console.error(error); return { ok: false, reason: error.message }; }
     if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false }; }
     return data || { ok: false };
+  },
+
+  getPaketKelas: async () => {
+    if (!SUPABASE_READY) return { mapping: [], daftarPaket: [], daftarKelas: [] };
+    const { data, error } = await SUPABASE_READY.rpc("get_paket_kelas", { pin_param: adminPin });
+    if (error) { console.error(error); return { mapping: [], daftarPaket: [], daftarKelas: [] }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { mapping: [], daftarPaket: [], daftarKelas: [] }; }
+    return data || { mapping: [], daftarPaket: [], daftarKelas: [] };
+  },
+
+  simpanPaketKelas: async (paket, kelasList) => {
+    if (!SUPABASE_READY) return { ok: false, reason: "Supabase belum dikonfigurasi." };
+    const { data, error } = await SUPABASE_READY.rpc("simpan_paket_kelas", { paket_param: paket, kelas_list: kelasList, pin_param: adminPin });
+    if (error) { console.error(error); return { ok: false, reason: error.message }; }
+    if (data && data.error === "unauthorized") { handleUnauthorized(); return { ok: false, reason: "Sesi berakhir." }; }
+    return data || { ok: false, reason: "Gagal simpan mapping." };
   },
 
   moveSoalGuru: async (paket, idx, dir) => {
@@ -638,6 +661,7 @@ const VIEWS = [
   { id:"dashboard",   icon:"dashboard",    label:"Dashboard" },
   { id:"siswa",       icon:"group",        label:"Kelola Siswa" },
   { id:"soal",        icon:"quiz",         label:"Kelola Soal" },
+  { id:"mapping",     icon:"grid_on",      label:"Pemetaan Kelas" },
   { id:"config",      icon:"settings",     label:"Config" },
   { id:"log",         icon:"history",      label:"Log Aktivitas" }
 ];
@@ -712,7 +736,7 @@ function openDrawer() { $("mobile-drawer").classList.remove("hidden"); }
    VIEW RENDERS
    ============================================================ */
 async function renderView() {
-  const fns = { dashboard: renderDashboard, siswa: renderSiswa, soal: renderSoal, config: renderConfig, log: renderLog };
+  const fns = { dashboard: renderDashboard, siswa: renderSiswa, soal: renderSoal, mapping: renderMapping, config: renderConfig, log: renderLog };
   (fns[currentView] || fns.dashboard)();
 }
 
@@ -961,8 +985,6 @@ async function renderSiswa() {
       <div class="flex flex-wrap gap-2 sm:ml-auto">
         <select id="siswa-paket" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Paket</option>
-          <option value="A">Paket A</option>
-          <option value="B">Paket B</option>
         </select>
         <select id="siswa-kelas" class="px-3 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all">
           <option value="">Semua Kelas</option>
@@ -995,6 +1017,13 @@ async function renderSiswa() {
     <div id="siswa-pagination"></div>`;
   $("main-area").innerHTML = html;
   const semua = await call("getAllSiswa", []);
+  const paketListSiswa = await call("getPaketList", []);
+  const paketSel = $("siswa-paket");
+  (Array.isArray(paketListSiswa) ? paketListSiswa : []).forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.Kode; o.textContent = p.Nama || ("Paket " + p.Kode);
+    paketSel.appendChild(o);
+  });
   const kelasSet = [...new Set(semua.map(s => s.Kelas).filter(Boolean))].sort();
   const kelasSel = $("siswa-kelas");
   kelasSet.forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = k; kelasSel.appendChild(o); });
@@ -1195,21 +1224,31 @@ async function openModalSiswa(idx) {
   const isEdit = idx !== undefined && idx >= 0;
   $("modal-siswa-title").textContent = isEdit ? "Edit Siswa" : "Tambah Siswa";
   $("modal-siswa-idx").value = isEdit ? idx : -1;
+  const paketListS = await call("getPaketList", []);
+  const sel = $("ms-paket");
+  sel.innerHTML = '<option value="">Otomatis (ikut mapping kelas)</option>';
+  (Array.isArray(paketListS) ? paketListS : []).forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.Kode; o.textContent = p.Nama || ("Paket " + p.Kode);
+    sel.appendChild(o);
+  });
   if (isEdit) {
     const siswa = await call("getAllSiswa", []);
     const s = siswa[idx];
     $("ms-nis").value = s.NIS; $("ms-nama").value = s.Nama; $("ms-kelas").value = s.Kelas;
-  } else { $("ms-nis").value=""; $("ms-nama").value=""; $("ms-kelas").value=""; }
+    sel.value = s.Paket_Soal || "";
+  } else { $("ms-nis").value=""; $("ms-nama").value=""; $("ms-kelas").value=""; sel.value=""; }
   setErr($("err-siswa"));
   $("modal-siswa").classList.remove("hidden"); $("modal-siswa").classList.add("flex");
 }
 function closeModalSiswa() { $("modal-siswa").classList.add("hidden"); $("modal-siswa").classList.remove("flex"); }
 async function simpanSiswa() {
   const nis = $("ms-nis").value.trim(), nama = $("ms-nama").value.trim(), kelas = $("ms-kelas").value.trim();
+  const paket = $("ms-paket").value || "";
   if (!nis||!nama||!kelas) { setErr($("err-siswa"),"Semua field wajib diisi."); return; }
   const idx = parseInt($("modal-siswa-idx").value, 10);
   const editIdx = idx >= 0 ? idx : undefined;
-  const res = await call("simpanSiswa", [nis, nama, kelas, editIdx]);
+  const res = await call("simpanSiswa", [nis, nama, kelas, editIdx, paket]);
   if (!res.ok) { setErr($("err-siswa"), res.reason); return; }
   closeModalSiswa(); await renderSiswaTable(); toast("Siswa tersimpan","check_circle");
 }
@@ -1219,6 +1258,105 @@ function confirmHapusSiswa(idx) {
   $("modal-hapus-desc").textContent = "Menghapus data siswa dan semua jawabannya. Tindakan ini tidak dapat dibatalkan.";
   $("modal-hapus-idx").value = idx;
   $("modal-hapus").classList.remove("hidden"); $("modal-hapus").classList.add("flex");
+}
+
+/* --- PEMETAAN KELAS --- */
+let mapState = { kelas: [], paket: [], map: {} };
+
+async function renderMapping() {
+  $("main-area").innerHTML = '<h2 class="font-display text-xl md:text-2xl font-bold mb-6">Pemetaan Kelas</h2><div class="skeleton h-64 rounded-2xl"></div>';
+  const d = await call("getPaketKelas", []);
+  const kelasSet = new Set();
+  (d.daftarKelas || []).forEach(k => k && kelasSet.add(k));
+  (d.mapping || []).forEach(m => m.kelas && kelasSet.add(m.kelas));
+  mapState.kelas = [...kelasSet].sort();
+  mapState.paket = Array.isArray(d.daftarPaket) ? d.daftarPaket : [];
+  mapState.map = {};
+  mapState.paket.forEach(p => mapState.map[p.Kode] = new Set());
+  (d.mapping || []).forEach(m => { if (mapState.map[m.paket]) mapState.map[m.paket].add(m.kelas); });
+  renderMappingTable();
+}
+
+function renderMappingTable() {
+  const kelasList = mapState.kelas;
+  const paketList = mapState.paket;
+  // peringatan: kelas yang belum punya paket sama sekali
+  const kelasPunyaPaket = new Set();
+  paketList.forEach(p => (mapState.map[p.Kode] || new Set()).forEach(k => kelasPunyaPaket.add(k)));
+  const kelasTanpaPaket = kelasList.filter(k => !kelasPunyaPaket.has(k));
+
+  let html = `
+    <h2 class="font-display text-xl md:text-2xl font-bold mb-2">Pemetaan Kelas</h2>
+    <p class="text-sm text-text-muted mb-5">Pilih kelas mana saja yang boleh memakai tiap paket. Siswa otomatis dapat paket acak dari kelasnya saat login.</p>
+    ${kelasTanpaPaket.length ? `<div class="mb-4 flex items-start gap-2 text-sm bg-orange-50 text-orange-800 border border-orange-200 rounded-xl px-4 py-3"><span class="material-symbols-outlined text-[18px]">warning</span><div>Kelas berikut belum punya paket: <b>${esc(kelasTanpaPaket.join(", "))}</b>. Siswa di kelas ini akan ditolak saat login sampai dipetakan.</div></div>` : ""}
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <input id="mpk-kelas" autocomplete="off" placeholder="Tambah nama kelas baru..." class="px-4 py-2 bg-white border border-outline-variant rounded-full text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 transition-all"/>
+      <button id="mpk-tambah" class="flex items-center gap-1.5 bg-secondary-container text-primary font-semibold rounded-full px-4 py-2 text-sm hover:bg-primary-fixed active:scale-[0.97] transition-all"><span class="material-symbols-outlined text-[16px]">add</span> Tambah Kelas</button>
+    </div>`;
+
+  if (!paketList.length) {
+    html += `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">grid_view</span><p class="mt-2 text-sm">Belum ada paket. Tambahkan paket di menu Kelola Soal dulu.</p></div>`;
+    $("main-area").innerHTML = html;
+    bindMappingEvents();
+    return;
+  }
+
+  if (!kelasList.length) {
+    html += `<div class="bg-white border border-border-subtle rounded-2xl shadow-soft p-8 text-center text-text-muted"><span class="material-symbols-outlined text-3xl opacity-60">school</span><p class="mt-2 text-sm">Belum ada kelas. Tambah kelas atau import siswa dulu.</p></div>`;
+    $("main-area").innerHTML = html;
+    bindMappingEvents();
+    return;
+  }
+
+  html += `
+    <div class="bg-white border border-border-subtle rounded-2xl shadow-soft overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-border-subtle bg-surface-container-low">
+            <th class="text-left px-4 py-3 font-semibold text-on-surface-variant sticky left-0 bg-surface-container-low">Paket</th>
+            ${kelasList.map((k,ci) => `<th class="px-3 py-3 font-semibold text-on-surface-variant text-center whitespace-nowrap">${esc(k)}</th>`).join("")}
+            <th class="text-center px-4 py-3 font-semibold text-on-surface-variant">Aksi</th>
+          </tr></thead>
+          <tbody>
+            ${paketList.map(p => `
+              <tr class="border-b border-border-subtle/50">
+                <td class="px-4 py-3 font-semibold sticky left-0 bg-white"><span class="inline-block w-7 h-7 rounded-full bg-secondary-container text-primary text-xs font-bold leading-7 text-center mr-2">${esc(p.Kode)}</span>${esc(p.Nama||p.Kode)}</td>
+                ${kelasList.map(k => `<td class="px-3 py-3 text-center"><input type="checkbox" class="w-4 h-4 accent-primary cursor-pointer" data-paket="${esc(p.Kode)}" data-kelas="${esc(k)}" ${(mapState.map[p.Kode]||new Set()).has(k)?"checked":""}/></td>`).join("")}
+                <td class="px-4 py-3 text-center"><button data-save="${esc(p.Kode)}" class="mpk-simpan px-3 py-1.5 bg-primary text-on-primary font-semibold rounded-full text-xs hover:bg-tertiary active:scale-[0.97] transition-all">Simpan</button></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  $("main-area").innerHTML = html;
+  bindMappingEvents();
+}
+
+function bindMappingEvents() {
+  const tambah = $("mpk-tambah");
+  if (tambah) tambah.addEventListener("click", () => {
+    const inp = $("mpk-kelas");
+    const val = (inp.value || "").trim();
+    if (!val) return;
+    if (!mapState.kelas.includes(val)) { mapState.kelas.push(val); mapState.kelas.sort(); }
+    inp.value = "";
+    renderMappingTable();
+  });
+  const inp = $("mpk-kelas");
+  if (inp) inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("mpk-tambah").click(); } });
+  document.querySelectorAll(".mpk-simpan").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const paket = btn.dataset.save;
+      const checked = [...document.querySelectorAll(`input[data-paket="${CSS.escape(paket)}"]:checked`)].map(c => c.dataset.kelas);
+      btn.disabled = true;
+      const res = await call("simpanPaketKelas", [paket, checked]);
+      btn.disabled = false;
+      if (!res.ok) { toast(res.reason || "Gagal simpan mapping", "error"); return; }
+      mapState.map[paket] = new Set(checked);
+      toast("Mapping paket " + paket + " tersimpan", "check_circle");
+      renderMappingTable();
+    });
+  });
 }
 
 /* --- KELOLA SOAL --- */

@@ -367,8 +367,13 @@ const api = {
     let paket = data.paket_soal || "";
     if (!paket) {
       const { data: pr, error: perr } = await SUPABASE_READY.rpc("assign_paket_if_empty", { nis_param: nis });
-      if (!perr && pr && pr.paket) paket = pr.paket;
-      else paket = Math.random() < 0.5 ? "A" : "B";
+      if (perr) { console.error(perr); return { found: false, error: "Gagal terhubung ke database." }; }
+      if (pr && pr.error === "KELAS_TANPA_PAKET") {
+        return { found: true, Status: data.status, blocked: true,
+          Nama: data.nama, Kelas: data.kelas,
+          error: "Kelas " + (data.kelas || "(kosong)") + " belum dipetakan paket soal. Hubungi guru." };
+      }
+      if (pr && pr.paket) paket = pr.paket;
     }
     return {
       found: true,
@@ -393,6 +398,7 @@ const api = {
     const { data, error } = await SUPABASE_READY.rpc("get_soal_siswa", { nis_param: nis });
     if (error) { console.error(error); return kosong; }
     if (!data) return kosong;
+    if (data.error) return Object.assign(kosong, { error: data.error });
     return {
       paket: data.paket || "A",
       soal: data.soal || [],
@@ -562,7 +568,13 @@ async function lookupNIS() {
   if (!res.found) {
     nisValidated = false;
     hideIdentitas();
-    setErr($("err-nis"), "NIS tidak ditemukan. Periksa kembali atau hubungi guru.");
+    setErr($("err-nis"), res.error || "NIS tidak ditemukan. Periksa kembali atau hubungi guru.");
+    return;
+  }
+  if (res.blocked) {
+    nisValidated = false;
+    hideIdentitas();
+    setErr($("err-nis"), res.error || "Kelas belum dipetakan ke paket soal. Hubungi guru.");
     return;
   }
   if (res.Status === "Selesai") {
@@ -630,6 +642,11 @@ async function enterExam() {
   $("exam-body").innerHTML = '<div class="skeleton h-48 rounded-2xl"></div><div class="skeleton h-48 rounded-2xl mt-5"></div><div class="skeleton h-48 rounded-2xl mt-5"></div>';
   showScreen("screen-exam");
   const res = await api.getSoal(state.nis);
+  if (res.error === "KELAS_TANPA_PAKET") {
+    showScreen("screen-login");
+    setErr($("err-nis"), "Kelas " + (state.kelas || "") + " belum dipetakan paket soal. Hubungi guru.");
+    return;
+  }
   state.soal = res.soal;
   state.paket = res.paket;
   state.durasi = res.durasi * 60;

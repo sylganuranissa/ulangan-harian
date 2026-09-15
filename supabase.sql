@@ -102,6 +102,26 @@ on conflict (paket, no) do nothing;
 -- Tabel lama dibiarkan sebagai fallback. Setelah dipastikan migrasi sukses,
 -- bisa di-drop: drop table soal_paket_a; drop table soal_paket_b;
 
+-- ============================================================
+-- Mapping paket <-> kelas (banyak-ke-banyak).
+-- Auto-assign pilih acak hanya dalam mapping kelas siswa.
+-- Override manual guru (siswa.paket_soal) bebas, tak divalidasi mapping.
+-- ============================================================
+
+create table if not exists paket_kelas (
+  paket text not null references paket(kode) on delete cascade,
+  kelas text not null,
+  primary key (paket, kelas)
+);
+
+alter table paket_kelas enable row level security;
+
+-- Backfill idempoten dari data lama agar kelas existing tak terkunci.
+insert into paket_kelas (paket, kelas)
+select distinct paket_soal, kelas from siswa
+where paket_soal <> '' and kelas <> ''
+on conflict do nothing;
+
 create table if not exists jawaban (
   id        uuid primary key default gen_random_uuid(),
   nis       text not null,
@@ -124,7 +144,10 @@ create table if not exists log_aktivitas (
 
 -- ======================== 2. RLS ========================
 
-alter table config        enable row level security;
+alter table config         enable row level security;
+alter table paket           enable row level security;
+alter table soal            enable row level security;
+alter table paket_kelas     enable row level security;
 alter table siswa         enable row level security;
 alter table soal_paket_a  enable row level security;
 alter table soal_paket_b  enable row level security;
@@ -267,10 +290,15 @@ begin
 
   v_paket := v_siswa.paket_soal;
   if v_paket is null or v_paket = '' then
-    select kode into v_paket from paket order by random() limit 1;
-    v_paket := coalesce(v_paket, 'A');
+    select p.kode into v_paket
+      from paket p join paket_kelas pk on pk.paket = p.kode
+      where pk.kelas = v_siswa.kelas
+      order by random() limit 1;
+    if v_paket is null then
+      return jsonb_build_object('error', 'KELAS_TANPA_PAKET');
+    end if;
     update siswa set paket_soal = v_paket where id = v_siswa.id;
-    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_paket || ' ditetapkan');
+    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_paket || ' ditetapkan (mapping kelas)');
   end if;
 
   -- Seed acak soal/opsi (deterministik per siswa; null = tanpa acak, data lama)
@@ -703,12 +731,19 @@ begin
   delete from siswa where true;
   delete from soal where true;
   delete from paket where true;
+  -- Catatan: delete paket cascade ke paket_kelas, jadi mapping di-seed ulang di bawah.
 
   perform _token_unlock();
 
   insert into paket (kode, nama, urutan) values
     ('A', 'Paket A', 1),
     ('B', 'Paket B', 2);
+
+  insert into paket_kelas (paket, kelas) values
+    ('A', 'XII IPA 1'),
+    ('B', 'XII IPA 1'),
+    ('A', 'XII IPA 2')
+  on conflict do nothing;
 
   insert into siswa (nis, nama, kelas, paket_soal, status) values
     ('001234', 'Budi Santoso', 'XII IPA 1', 'A', 'Belum Mulai'),
@@ -733,9 +768,11 @@ $$;
 
 -- 3p. simpan_siswa_guru: tambah/edit siswa (wajib PIN guru). Jika NIS berubah,
 --     jawaban & log ikut di-update (tidak orphan).
+--     paket_param: '' = otomatis (ikut mapping kelas saat login), lainnya = override manual.
 create or replace function simpan_siswa_guru(
   nis_param text, nama_param text, kelas_param text,
-  edit_nis_param text default '', pin_param text default ''
+  edit_nis_param text default '', pin_param text default '',
+  paket_param text default ''
 ) returns jsonb language plpgsql security definer as $$
 begin
   if not _cek_pin(pin_param) then
@@ -745,7 +782,9 @@ begin
     if nis_param <> edit_nis_param and exists (select 1 from siswa where nis = nis_param) then
       return jsonb_build_object('ok', false, 'reason', 'NIS sudah ada.');
     end if;
-    update siswa set nis = nis_param, nama = nama_param, kelas = kelas_param where nis = edit_nis_param;
+    update siswa set nis = nis_param, nama = nama_param, kelas = kelas_param,
+                     paket_soal = paket_param
+      where nis = edit_nis_param;
     update jawaban set nis = nis_param where nis = edit_nis_param;
     update log_aktivitas set nis = nis_param where nis = edit_nis_param;
     return jsonb_build_object('ok', true);
@@ -753,7 +792,8 @@ begin
   if exists (select 1 from siswa where nis = nis_param) then
     return jsonb_build_object('ok', false, 'reason', 'NIS sudah ada.');
   end if;
-  insert into siswa (nis, nama, kelas, status) values (nis_param, nama_param, kelas_param, 'Belum Mulai');
+  insert into siswa (nis, nama, kelas, paket_soal, status)
+    values (nis_param, nama_param, kelas_param, paket_param, 'Belum Mulai');
   return jsonb_build_object('ok', true);
 end;
 $$;
@@ -774,19 +814,26 @@ $$;
 
 -- 3r. assign_paket_if_empty: tetapkan paket acak untuk siswa (dipanggil saat login).
 --     Idempoten — jika sudah punya paket, tidak diubah.
+--     Kandidat dibatasi mapping kelas siswa (paket_kelas). Jika kelas tak
+--     dipetakan ke paket manapun -> error KELAS_TANPA_PAKET (blokir login).
 create or replace function assign_paket_if_empty(nis_param text)
 returns jsonb language plpgsql security definer as $$
-declare v_siswa siswa%rowtype;
+declare v_siswa siswa%rowtype; v_paket text;
 begin
   select * into v_siswa from siswa where nis = nis_param limit 1;
   if not found then return jsonb_build_object('paket', ''); end if;
   if v_siswa.paket_soal is null or v_siswa.paket_soal = '' then
-    select kode into v_siswa.paket_soal from paket
+    select p.kode into v_paket
+      from paket p join paket_kelas pk on pk.paket = p.kode
+      where pk.kelas = v_siswa.kelas
       order by random() limit 1;
-    v_siswa.paket_soal := coalesce(v_siswa.paket_soal, 'A');
-    update siswa set paket_soal = v_siswa.paket_soal, acak_seed = floor(random() * 1000000)::int
+    if v_paket is null then
+      return jsonb_build_object('paket', '', 'error', 'KELAS_TANPA_PAKET');
+    end if;
+    update siswa set paket_soal = v_paket, acak_seed = floor(random() * 1000000)::int
       where id = v_siswa.id;
-    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_siswa.paket_soal || ' ditetapkan');
+    insert into log_aktivitas (nis, event, detail) values (nis_param, 'Login', 'Paket ' || v_paket || ' ditetapkan (mapping kelas)');
+    return jsonb_build_object('paket', v_paket);
   end if;
   return jsonb_build_object('paket', v_siswa.paket_soal);
 end;
@@ -794,9 +841,16 @@ $$;
 
 -- 3s. ubah_status_siswa: guru mengubah status siswa (wajib PIN guru)
 --     Hanya untuk reset (Belum Mulai) atau set selesai manual.
---     Reset juga menghapus waktu_mulai, waktu_selesai, skor.
+--     Reset juga menghapus waktu_mulai, waktu_selesai, skor. Saat reset, paket
+--     dipilih ulang dalam mapping kelas siswa (beda dari sebelumnya jika ada >1).
+--     Jika kelas siswa tak punya mapping paket -> tolak reset (KELAS_TANPA_PAKET).
 create or replace function ubah_status_siswa(nis_param text, status_param text, pin_param text default '')
 returns jsonb language plpgsql security definer as $$
+declare
+  v_kelas   text;
+  v_lama    text;
+  v_baru    text;
+  v_jml     int;
 begin
   if not _cek_pin(pin_param) then
     return jsonb_build_object('ok', false, 'error', 'unauthorized');
@@ -808,12 +862,20 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'Siswa tidak ditemukan.');
   end if;
   if status_param = 'Belum Mulai' then
-    -- Reset penuh: pilih paket LAIN (pastikan beda dari sebelumnya), jawaban lama dihapus
+    select kelas, paket_soal into v_kelas, v_lama from siswa where nis = nis_param;
+    select count(*) into v_jml from paket_kelas where kelas = v_kelas;
+    if v_jml = 0 then
+      return jsonb_build_object('ok', false, 'reason', 'Kelas "' || coalesce(v_kelas,'(kosong)') || '" belum dipetakan ke paket. Atur di menu Pemetaan Kelas.');
+    end if;
+    select paket into v_baru from paket_kelas
+      where kelas = v_kelas and paket <> coalesce(v_lama, '')
+      order by random() limit 1;
+    if v_baru is null then
+      select paket into v_baru from paket_kelas where kelas = v_kelas order by random() limit 1;
+    end if;
     update siswa s set status = 'Belum Mulai', waktu_mulai = null, waktu_selesai = null,
                        skor = null, acak_seed = floor(random() * 1000000)::int,
-                       paket_soal = coalesce(
-                         (select kode from paket where kode <> s.paket_soal order by random() limit 1),
-                         s.paket_soal)
+                       paket_soal = coalesce(v_baru, s.paket_soal)
       where nis = nis_param;
     delete from jawaban where nis = nis_param;
   else
@@ -832,18 +894,21 @@ returns text language sql as $$
   from paket where kode ~ '^[A-Z]$'
 $$;
 
--- 3u. get_paket_list: daftar paket + jumlah soal (dashboard guru, wajib PIN)
+-- 3u. get_paket_list: daftar paket + jumlah soal + kelas ter-mapping (dashboard guru, wajib PIN)
 create or replace function get_paket_list(pin_param text)
 returns jsonb language sql security definer as $$
   select case
     when _cek_pin(pin_param) then
       coalesce(jsonb_agg(jsonb_build_object(
-        'Kode', p.kode, 'Nama', p.nama, 'Urutan', p.urutan, 'JumlahSoal', s.jml
+        'Kode', p.kode, 'Nama', p.nama, 'Urutan', p.urutan, 'JumlahSoal', s.jml,
+        'Kelas', coalesce(k.kls, '[]'::jsonb)
       ) order by p.urutan), '[]'::jsonb)
     else jsonb_build_object('error', 'unauthorized')
   end
   from paket p
-  left join (select paket, count(*) as jml from soal group by paket) s on s.paket = p.kode;
+  left join (select paket, count(*) as jml from soal group by paket) s on s.paket = p.kode
+  left join (select paket, jsonb_agg(kelas order by kelas) as kls
+             from paket_kelas group by paket) k on k.paket = p.kode;
 $$;
 
 -- 3v. simpan_paket_guru: tambah/edit paket (wajib PIN guru)
@@ -861,6 +926,48 @@ begin
   end if;
   insert into paket (kode, nama, urutan) values (kode_param, coalesce(nama_param, kode_param), coalesce(urutan_param, 99))
     on conflict (kode) do update set nama = excluded.nama, urutan = excluded.urutan;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- 3v2. get_paket_kelas: seluruh mapping + daftar paket + daftar kelas (guru, wajib PIN).
+--      daftarKelas = union kelas di siswa & paket_kelas agar kelas baru bisa dipilih.
+create or replace function get_paket_kelas(pin_param text)
+returns jsonb language sql security definer as $$
+  select case
+    when _cek_pin(pin_param) then jsonb_build_object(
+      'mapping', coalesce((select jsonb_agg(jsonb_build_object('paket', paket, 'kelas', kelas) order by paket, kelas)
+                           from paket_kelas), '[]'::jsonb),
+      'daftarPaket', coalesce((select jsonb_agg(jsonb_build_object('Kode', kode, 'Nama', nama, 'Urutan', urutan)
+                                                order by urutan) from paket), '[]'::jsonb),
+      'daftarKelas', coalesce((select jsonb_agg(k order by k) from (
+                                 select distinct kelas as k from siswa where kelas <> ''
+                                 union
+                                 select distinct kelas from paket_kelas where kelas <> '') u), '[]'::jsonb)
+    )
+    else jsonb_build_object('error', 'unauthorized')
+  end;
+$$;
+
+-- 3v3. simpan_paket_kelas: replace daftar kelas untuk satu paket (guru, wajib PIN).
+--      kelas_list = jsonb array string. Kelas bebas (tak perlu ada di siswa).
+create or replace function simpan_paket_kelas(paket_param text, kelas_list jsonb, pin_param text default '')
+returns jsonb language plpgsql security definer as $$
+declare k text;
+begin
+  if not _cek_pin(pin_param) then
+    return jsonb_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  if not exists (select 1 from paket where kode = paket_param) then
+    return jsonb_build_object('ok', false, 'reason', 'Paket tidak ditemukan.');
+  end if;
+  delete from paket_kelas where paket = paket_param;
+  for k in select value::text from jsonb_array_elements_text(coalesce(kelas_list, '[]'::jsonb)) loop
+    if k is not null and k <> '' then
+      insert into paket_kelas (paket, kelas) values (paket_param, k)
+        on conflict do nothing;
+    end if;
+  end loop;
   return jsonb_build_object('ok', true);
 end;
 $$;
@@ -974,6 +1081,13 @@ insert into siswa (nis, nama, kelas, paket_soal, status) values
   ('001235', 'Siti Aminah',   'XII IPA 1', 'B', 'Belum Mulai'),
   ('001236', 'Andi Prasetyo', 'XII IPA 2', '',  'Belum Mulai')
 on conflict (nis) do nothing;
+
+-- Pastikan mapping tersedia untuk siswa yang sudah punya paket+kelas,
+-- agar login/reset tidak terblokir (idempoten, aman diulang).
+insert into paket_kelas (paket, kelas)
+select distinct paket_soal, kelas from siswa
+where paket_soal <> '' and kelas <> ''
+on conflict do nothing;
 
 insert into paket (kode, nama, urutan) values
   ('A', 'Paket A', 1),
