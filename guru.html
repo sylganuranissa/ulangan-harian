@@ -1057,12 +1057,24 @@ async function renderSiswa() {
   await renderSiswaTable();
 }
 function parseCSV(text) {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return [];
-  const delim = lines.some(l => l.includes(';')) ? ';' : ',';
-  return lines.map(line =>
-    line.split(delim).map(f => f.trim().replace(/^"|"$/g, "").replace(/""/g, '"'))
-  ).filter(r => r.some(f => f !== ""));
+  if (!text) return [];
+  var delim = text.slice(0, text.indexOf("\n") >= 0 ? text.indexOf("\n") : text.length).includes(";") ? ";" : ",";
+  var rows = [], row = [], field = "", inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i);
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text.charAt(i + 1) === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === delim) { row.push(field.trim()); field = ""; }
+    else if (ch === "\r") continue;
+    else if (ch === "\n") { row.push(field.trim()); rows.push(row); row = []; field = ""; }
+    else field += ch;
+  }
+  if (field !== "" || row.length) { row.push(field.trim()); rows.push(row); }
+  return rows.filter(r => r.some(f => f !== ""));
 }
 async function importSiswaCSV(input) {
   const file = input.files && input.files[0];
@@ -1960,7 +1972,9 @@ function sanitizeHTML(html) {
       parent.removeChild(el);
     }
   });
-  return tmp.innerHTML;
+  var gres = tmp.innerHTML;
+  gres = gres.replace(/\n/g, '<br>');
+  return gres;
 }
 
 /* ============================================================

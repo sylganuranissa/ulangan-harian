@@ -551,7 +551,9 @@ function sanitizeHTML(html) {
       parent.removeChild(el);
     }
   });
-  return tmp.innerHTML;
+  var result = tmp.innerHTML;
+  result = result.replace(/\n/g, '<br>');
+  return result;
 }
 
 /* ============================================================
